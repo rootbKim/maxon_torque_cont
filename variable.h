@@ -2,8 +2,7 @@
 #define VARIABLE_H_
 
 char MIR1[100];
-char uart[16];
-char uart2[50];
+char uart[18];
 char buff[100];
 char uart_buff[8];
 

@@ -334,8 +334,8 @@ void Torque_Calculate()
 		uart[7] = 0x00;
 		uart[8] = (hexadecimal[1] << 4) | hexadecimal[0];
 		uart[9] = (hexadecimal[3] << 4) | hexadecimal[2];
-		uart[10] = 0x00;
-		uart[11] = 0x00;
+		uart[10] = (hexadecimal[5] << 4) | hexadecimal[4];
+		uart[11] = (hexadecimal[7] << 4) | hexadecimal[6];
 
 		DataArray[0] = (uart[3] << 8) + uart[2];
 		DataArray[1] = (uart[5] << 8) + uart[4];
@@ -347,7 +347,7 @@ void Torque_Calculate()
 		CRC = CalcFieldCRC(DataArray, 6);
 
 		uart[12] = (CRC & 0xff);
-		uart[13] = (CRC & 0xff << 8) >> 8;
+		uart[13] = (CRC & (0xff << 8)) >> 8;
 
 		if(uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90)
 		{
@@ -373,7 +373,7 @@ void Torque_Calculate()
 					buff_i++;
 				}
 			}
-			for(stuff_i = 12; stuff_i < 14; stuff_i++)
+			for(stuff_i = 13; stuff_i > 11; stuff_i--)
 			{
 				uart[stuff_i+(buff_i-4)] = uart[stuff_i];
 			}
@@ -400,9 +400,9 @@ void Torque_Calculate()
 		uart[6] = 0x60;
 		uart[7] = 0x00;
 		uart[8] = -((hexadecimal[1] << 4) | hexadecimal[0]) & 0xff;
-		uart[9] = (-((hexadecimal[3] << 4) | hexadecimal[2]) & 0xff) - 1;
-		uart[10] = 0xff;
-		uart[11] = 0xff;
+		uart[9] = (-((hexadecimal[3] << 4) | hexadecimal[2]) - 1) &0xff;
+		uart[10] = (-((hexadecimal[5] << 4) | hexadecimal[4]) - 1) &0xff;
+		uart[11] = (-((hexadecimal[7] << 4) | hexadecimal[6]) - 1) &0xff;
 
 		DataArray[0] = (uart[3] << 8) + uart[2];
 		DataArray[1] = (uart[5] << 8) + uart[4];
@@ -414,7 +414,7 @@ void Torque_Calculate()
 		CRC = CalcFieldCRC(DataArray, 6);
 
 		uart[12] = (CRC & 0xff);
-		uart[13] = (CRC & 0xff << 8) >> 8;
+		uart[13] = (CRC & (0xff << 8)) >> 8;
 
 		if(uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90)
 		{
@@ -440,7 +440,7 @@ void Torque_Calculate()
 					buff_i++;
 				}
 			}
-			for(stuff_i = 12; stuff_i < 14; stuff_i++)
+			for(stuff_i = 13; stuff_i > 11; stuff_i--)
 			{
 				uart[stuff_i+(buff_i-4)] = uart[stuff_i];
 			}
@@ -454,14 +454,11 @@ void Torque_Calculate()
 			buff_i = 0;
 		}
 	}
-
-	sprintf(uart2, "%02x%02x", uart[12], uart[13]);
-
 }
 
 unsigned short* decimal2hex(int torque)
 {
-	unsigned short hexadecimal[4] = {0, };
+	unsigned short hexadecimal[8] = {0, };
 	int position = 0;
 	int decimal = torque;
 
