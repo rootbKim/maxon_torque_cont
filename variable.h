@@ -17,7 +17,7 @@ Uint16 i = 0, M_i = 0, E_i = 0, D_i = 0;
 int a = 0;
 int Flash_bit=0;
 int flag = 0;
-int torque = 0;
+long torque = 0;
 int stuff_position = 0;
 int stuff_position2 = 0;
 int buff_i = 0;

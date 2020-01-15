@@ -23,7 +23,7 @@ void scic_fifo_init(void);
 void MIR_transmit();
 void MIR_Put_String(char *MIR_string);
 void Motor_Enable();
-unsigned short* decimal2hex(int torque);
+unsigned short* decimal2hex(long torque);
 unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLength);
 
 interrupt void scicRxFifoIsr(void);
@@ -329,7 +329,7 @@ void Torque_Calculate()
 		uart[2] = 0x68;
 		uart[3] = 0x04;
 		uart[4] = 0x01;
-		uart[5] = 0x71;
+		uart[5] = 0x7a;
 		uart[6] = 0x60;
 		uart[7] = 0x00;
 		uart[8] = (hexadecimal[1] << 4) | hexadecimal[0];
@@ -349,9 +349,9 @@ void Torque_Calculate()
 		uart[12] = (CRC & 0xff);
 		uart[13] = (CRC & (0xff << 8)) >> 8;
 
-		if(uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90)
+		if(uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90 || uart[12] == 0x90 || uart[13] == 0x90)
 		{
-			for(stuff_i=8;stuff_i<12;stuff_i++)
+			for(stuff_i=8;stuff_i<14;stuff_i++)
 			{
 				stuff_position++;
 
@@ -367,15 +367,11 @@ void Torque_Calculate()
 						stuff_position2 = stuff_position+7;
 					}
 				}
-				else if(uart[stuff_i] != 0x90)
+				else if(uart[stuff_i] != 0x90 && stuff_position2 != 0)
 				{
 					uart_buff[buff_i] = uart[stuff_i];
 					buff_i++;
 				}
-			}
-			for(stuff_i = 13; stuff_i > 11; stuff_i--)
-			{
-				uart[stuff_i+(buff_i-4)] = uart[stuff_i];
 			}
 			for(stuff_i = stuff_position2; stuff_i < (stuff_position2+buff_i); stuff_i++)
 			{
@@ -389,14 +385,12 @@ void Torque_Calculate()
 	}
 	else if (torque < 0)
 	{
-		torque = -torque;
-
 		uart[0] = 0x90;
 		uart[1] = 0x02;
 		uart[2] = 0x68;
 		uart[3] = 0x04;
 		uart[4] = 0x01;
-		uart[5] = 0x71;
+		uart[5] = 0x7a;
 		uart[6] = 0x60;
 		uart[7] = 0x00;
 		uart[8] = -((hexadecimal[1] << 4) | hexadecimal[0]) & 0xff;
@@ -416,9 +410,9 @@ void Torque_Calculate()
 		uart[12] = (CRC & 0xff);
 		uart[13] = (CRC & (0xff << 8)) >> 8;
 
-		if(uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90)
+		if(uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90 || uart[12] == 0x90 || uart[13] == 0x90)
 		{
-			for(stuff_i=8;stuff_i<12;stuff_i++)
+			for(stuff_i=8;stuff_i<14;stuff_i++)
 			{
 				stuff_position++;
 
@@ -434,15 +428,11 @@ void Torque_Calculate()
 						stuff_position2 = stuff_position+7;
 					}
 				}
-				else if(uart[stuff_i] != 0x90)
+				else if(uart[stuff_i] != 0x90 && stuff_position2 != 0)
 				{
 					uart_buff[buff_i] = uart[stuff_i];
 					buff_i++;
 				}
-			}
-			for(stuff_i = 13; stuff_i > 11; stuff_i--)
-			{
-				uart[stuff_i+(buff_i-4)] = uart[stuff_i];
 			}
 			for(stuff_i = stuff_position2; stuff_i < (stuff_position2+buff_i); stuff_i++)
 			{
@@ -456,11 +446,13 @@ void Torque_Calculate()
 	}
 }
 
-unsigned short* decimal2hex(int torque)
+unsigned short* decimal2hex(long torque)
 {
 	unsigned short hexadecimal[8] = {0, };
 	int position = 0;
-	int decimal = torque;
+	long decimal = torque;
+
+	if(decimal < 0) decimal = -decimal;
 
 	while(1)
 	{
