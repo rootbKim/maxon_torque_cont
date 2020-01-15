@@ -322,47 +322,138 @@ void Torque_Calculate()
 	unsigned short DataArray[6];
 	unsigned short CRC = 0;
 
-//	hexadecimal = decimal2hex(torque);
-
-	uart[0] = 0x90;
-	uart[1] = 0x02;
-	uart[2] = 0x68;
-	uart[3] = 0x04;
-	uart[4] = 0x01;
-	uart[5] = 0x71;
-	uart[6] = 0x60;
-	uart[7] = 0x00;
-	uart[8] = (hexadecimal[1] << 4) | hexadecimal[0];
-	uart[9] = (hexadecimal[3] << 4) | hexadecimal[2];
-	uart[10] = 0x00;
-	uart[11] = 0x00;
-
-	if(uart[8] == 0x90)
+	if (torque >= 0)
 	{
-		uart[10] = uart[9];
-		uart[9] = 0x90;
+		uart[0] = 0x90;
+		uart[1] = 0x02;
+		uart[2] = 0x68;
+		uart[3] = 0x04;
+		uart[4] = 0x01;
+		uart[5] = 0x71;
+		uart[6] = 0x60;
+		uart[7] = 0x00;
+		uart[8] = (hexadecimal[1] << 4) | hexadecimal[0];
+		uart[9] = (hexadecimal[3] << 4) | hexadecimal[2];
+		uart[10] = 0x00;
+		uart[11] = 0x00;
+
+		DataArray[0] = (uart[3] << 8) + uart[2];
+		DataArray[1] = (uart[5] << 8) + uart[4];
+		DataArray[2] = (uart[7] << 8) + uart[6];
+		DataArray[3] = (uart[9] << 8) + uart[8];
+		DataArray[4] = (uart[11] << 8) + uart[10];
+		DataArray[5] = 0x0000;
+
+		CRC = CalcFieldCRC(DataArray, 6);
+
+		uart[12] = (CRC & 0xff);
+		uart[13] = (CRC & 0xff << 8) >> 8;
+
+		if(uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90)
+		{
+			for(stuff_i=8;stuff_i<12;stuff_i++)
+			{
+				stuff_position++;
+
+				if(uart[stuff_i] == 0x90)
+				{
+					uart_buff[buff_i] = 0x90;
+					buff_i++;
+					uart_buff[buff_i] = 0x90;
+					buff_i++;
+
+					if(stuff_position2 == 0)
+					{
+						stuff_position2 = stuff_position+7;
+					}
+				}
+				else if(uart[stuff_i] != 0x90)
+				{
+					uart_buff[buff_i] = uart[stuff_i];
+					buff_i++;
+				}
+			}
+			for(stuff_i = 12; stuff_i < 14; stuff_i++)
+			{
+				uart[stuff_i+(buff_i-4)] = uart[stuff_i];
+			}
+			for(stuff_i = stuff_position2; stuff_i < (stuff_position2+buff_i); stuff_i++)
+			{
+				uart[stuff_i] = uart_buff[(stuff_i - stuff_position2)];
+			}
+
+			stuff_position = 0;
+			stuff_position2 = 0;
+			buff_i = 0;
+		}
 	}
-	else if(uart[9] == 0x90)
+	else if (torque < 0)
 	{
-		uart[10] = 0x90;
+		torque = -torque;
+
+		uart[0] = 0x90;
+		uart[1] = 0x02;
+		uart[2] = 0x68;
+		uart[3] = 0x04;
+		uart[4] = 0x01;
+		uart[5] = 0x71;
+		uart[6] = 0x60;
+		uart[7] = 0x00;
+		uart[8] = -((hexadecimal[1] << 4) | hexadecimal[0]) & 0xff;
+		uart[9] = (-((hexadecimal[3] << 4) | hexadecimal[2]) & 0xff) - 1;
+		uart[10] = 0xff;
+		uart[11] = 0xff;
+
+		DataArray[0] = (uart[3] << 8) + uart[2];
+		DataArray[1] = (uart[5] << 8) + uart[4];
+		DataArray[2] = (uart[7] << 8) + uart[6];
+		DataArray[3] = (uart[9] << 8) + uart[8];
+		DataArray[4] = (uart[11] << 8) + uart[10];
+		DataArray[5] = 0x0000;
+
+		CRC = CalcFieldCRC(DataArray, 6);
+
+		uart[12] = (CRC & 0xff);
+		uart[13] = (CRC & 0xff << 8) >> 8;
+
+		if(uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90)
+		{
+			for(stuff_i=8;stuff_i<12;stuff_i++)
+			{
+				stuff_position++;
+
+				if(uart[stuff_i] == 0x90)
+				{
+					uart_buff[buff_i] = 0x90;
+					buff_i++;
+					uart_buff[buff_i] = 0x90;
+					buff_i++;
+
+					if(stuff_position2 == 0)
+					{
+						stuff_position2 = stuff_position+7;
+					}
+				}
+				else if(uart[stuff_i] != 0x90)
+				{
+					uart_buff[buff_i] = uart[stuff_i];
+					buff_i++;
+				}
+			}
+			for(stuff_i = 12; stuff_i < 14; stuff_i++)
+			{
+				uart[stuff_i+(buff_i-4)] = uart[stuff_i];
+			}
+			for(stuff_i = stuff_position2; stuff_i < (stuff_position2+buff_i); stuff_i++)
+			{
+				uart[stuff_i] = uart_buff[(stuff_i - stuff_position2)];
+			}
+
+			stuff_position = 0;
+			stuff_position2 = 0;
+			buff_i = 0;
+		}
 	}
-	else if(uart[8] == 0x90 && uart[9] == 0x90)
-	{
-		uart[10] = 0x90;
-		uart[11] = 0x90;
-	}
-
-	DataArray[0] = (uart[3] << 8) + uart[2];
-	DataArray[1] = (uart[5] << 8) + uart[4];
-	DataArray[2] = (uart[7] << 8) + uart[6];
-	DataArray[3] = (uart[9] << 8) + uart[8];
-	DataArray[4] = (uart[11] << 8) + uart[10];
-	DataArray[5] = 0x0000;
-
-	CRC = CalcFieldCRC(DataArray, 6);
-
-	uart[12] = (CRC & 0xff);
-	uart[13] = (CRC & 0xff << 8) >> 8;
 
 	sprintf(uart2, "%02x%02x", uart[12], uart[13]);
 

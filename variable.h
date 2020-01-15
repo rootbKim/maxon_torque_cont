@@ -2,9 +2,10 @@
 #define VARIABLE_H_
 
 char MIR1[100];
-char uart[14];
+char uart[16];
 char uart2[50];
 char buff[100];
+char uart_buff[8];
 
 #define SYSCLK      150E6   /* 150MHz */
 #define TBCLK       150E6   /* 150MHz */
@@ -18,6 +19,10 @@ int a = 0;
 int Flash_bit=0;
 int flag = 0;
 int torque = 0;
+int stuff_position = 0;
+int stuff_position2 = 0;
+int buff_i = 0;
+int stuff_i = 0;
 
 extern Uint16 RamfuncsLoadStart;
 extern Uint16 RamfuncsLoadEnd;
