@@ -253,7 +253,7 @@ interrupt void scicRxFifoIsr(void) {
       }
    }
 
-   sprintf(RxBuff2, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", RxBuff[0], RxBuff[1], RxBuff[2], RxBuff[3], RxBuff[4], RxBuff[5], RxBuff[6], RxBuff[7], RxBuff[8], RxBuff[9], RxBuff[10], RxBuff[11], RxBuff[12], RxBuff[13]);
+   sprintf(RxBuff2, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", RxBuff[0], RxBuff[1], RxBuff[2], RxBuff[3], RxBuff[4], RxBuff[5], RxBuff[6], RxBuff[7], RxBuff[8], RxBuff[9], RxBuff[10], RxBuff[11], RxBuff[12], RxBuff[13]);
 
    ScicRegs.SCIFFRX.bit.RXFFOVRCLR = 1;         // Clear Overflow flag
    ScicRegs.SCIFFRX.bit.RXFFINTCLR = 1;         // Clear Interrupt flag
@@ -322,6 +322,8 @@ void Torque_Calculate()
 	unsigned short DataArray[6];
 	unsigned short CRC = 0;
 
+	protocol_len = 14;
+
 	if (torque >= 0)
 	{
 		uart[0] = 0x90;
@@ -329,7 +331,7 @@ void Torque_Calculate()
 		uart[2] = 0x68;
 		uart[3] = 0x04;
 		uart[4] = 0x01;
-		uart[5] = 0x7a;
+		uart[5] = 0x71;
 		uart[6] = 0x60;
 		uart[7] = 0x00;
 		uart[8] = (hexadecimal[1] << 4) | hexadecimal[0];
@@ -362,6 +364,8 @@ void Torque_Calculate()
 					uart_buff[buff_i] = 0x90;
 					buff_i++;
 
+					protocol_len++;
+
 					if(stuff_position2 == 0)
 					{
 						stuff_position2 = stuff_position+7;
@@ -390,7 +394,7 @@ void Torque_Calculate()
 		uart[2] = 0x68;
 		uart[3] = 0x04;
 		uart[4] = 0x01;
-		uart[5] = 0x7a;
+		uart[5] = 0x71;
 		uart[6] = 0x60;
 		uart[7] = 0x00;
 		uart[8] = -((hexadecimal[1] << 4) | hexadecimal[0]) & 0xff;
@@ -502,7 +506,7 @@ interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 100Hz
 
    if(flag == 1)
    {
-      sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13]);
+      sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
       MIR_transmit();
       flag = 0;
    }
