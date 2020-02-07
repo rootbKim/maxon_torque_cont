@@ -31,6 +31,8 @@ void Motor_Enable();
 unsigned short* decimal2hex(long torque);
 unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLength);
 
+void InitEPwm1Module(void);
+void OutputPWM();
 interrupt void scicRxFifoIsr(void);
 
 //--------------main 함수------------------//
@@ -61,6 +63,8 @@ void main(void) {
 
    // Vector table을 내가 사용하기 위한 기능으로 배치
    Reg_setting_fun();
+
+   InitEPwm1Module();
 
    // CPU Timer 초기화
    InitCpuTimers();
@@ -113,6 +117,18 @@ void Reg_setting_fun() {
 
    SysCtrlRegs.HISPCP.bit.HSPCLK = 1;
 
+	//엔코더 입력 핀 사용 설정
+	GpioCtrlRegs.GPAMUX1.bit.GPIO5 = 0;
+	GpioCtrlRegs.GPBMUX1.bit.GPIO37 = 0;
+	GpioCtrlRegs.GPAMUX2.bit.GPIO25 = 0;
+	GpioCtrlRegs.GPAMUX2.bit.GPIO27 = 0;
+	GpioCtrlRegs.GPAMUX1.bit.GPIO12 = 0;
+	GpioCtrlRegs.GPAMUX1.bit.GPIO14 = 0;
+	GpioCtrlRegs.GPBMUX1.bit.GPIO32 = 0;
+	GpioCtrlRegs.GPAMUX1.bit.GPIO7 = 0;
+	GpioCtrlRegs.GPAMUX1.bit.GPIO9 = 0;
+	GpioCtrlRegs.GPAMUX1.bit.GPIO11 = 0;
+
    //led 제어 사용 설정
    GpioCtrlRegs.GPBMUX2.bit.GPIO48 = 0;
    GpioCtrlRegs.GPBMUX2.bit.GPIO51 = 0;
@@ -121,7 +137,47 @@ void Reg_setting_fun() {
    GpioCtrlRegs.GPBDIR.bit.GPIO48 = 1;
    GpioCtrlRegs.GPBDIR.bit.GPIO51 = 1;
 
+	// PWM 1B를 사용하기 위해 GPIO1을 Pull-up 시킴
+	GpioCtrlRegs.GPAPUD.bit.GPIO1 = 0;
+	GpioCtrlRegs.GPAPUD.bit.GPIO3 = 0;
+
+	// PWM 1B를 사용하기 위해 MUX Pin 배치
+	GpioCtrlRegs.GPAMUX1.bit.GPIO1 = 1;
+	GpioCtrlRegs.GPAMUX1.bit.GPIO3 = 1;
+
    EDIS;
+}
+
+void InitEPwm1Module(void) {
+	/* Setup TBCLK */
+	EPwm1Regs.TBPRD = (150E6 / 20E3) - 1; /* Set Timer Period */
+	EPwm1Regs.TBCTR = 0; /* Clear Counter */
+
+	/* Set Compare values */
+	EPwm1Regs.CMPA.half.CMPA = ((EPwm1Regs.TBPRD + 1) >> 1); /* Set Compare A value to 50% */
+	EPwm1Regs.CMPB = ((EPwm1Regs.TBPRD + 1) >> 1);
+	/* Setup counter mode */
+	EPwm1Regs.TBCTL.bit.CTRMODE = 0; /* Count Up (Asymmetric) */
+	EPwm1Regs.TBPHS.half.TBPHS = 0; /* Phase is 0 */
+	EPwm1Regs.TBCTL.bit.PHSEN = 0; /* Disable phase loading */
+	EPwm1Regs.TBCTL.bit.PRDLD = 0; /* Period Register is loaded from its shadow when CNTR=Zero */
+	EPwm1Regs.TBCTL.bit.HSPCLKDIV = 0; /* Clock ratio to SYSCLKOUT */
+	EPwm1Regs.TBCTL.bit.CLKDIV = 0; /* TBCLK = SYSCLK / (HSPCLKDIV * CLKDIV) */
+
+	/* Setup shadowing */
+	EPwm1Regs.CMPCTL.bit.SHDWAMODE = 0; /* Enable Shadowing */
+	EPwm1Regs.CMPCTL.bit.LOADAMODE = 0; /* Load on CNTR=Zero */
+
+	/* Set actions */
+	EPwm1Regs.AQCTLA.bit.ZRO = 2; /* Set EPWM1A on CNTR=Zero */
+	EPwm1Regs.AQCTLA.bit.CAU = 1; /* Clear EPWM1A on event A, up count */
+	EPwm1Regs.AQCTLB.bit.ZRO = 2;
+	EPwm1Regs.AQCTLB.bit.CBU = 1;
+
+	/* Set Interrupts */
+	EPwm1Regs.ETSEL.bit.INTSEL = 1; /* Select INT on CNTR=Zero */
+	EPwm1Regs.ETSEL.bit.INTEN = 1; /* Enable INT */
+	EPwm1Regs.ETPS.bit.INTPRD = 1; /* Generate INT on 1st event */
 }
 
 // 통신 설정
@@ -604,13 +660,23 @@ unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLeng
 
    return CRC;
 }
+void OutputPWM() {
+	if (break_duty >= 1)
+		break_duty = 1;
+	else if (break_duty <= 0)
+		break_duty = 0;
+
+// Brake의 Duty를 조절하는 함수. Brake Duty는 0.0 ~ 1.0 사이어야 함.
+	EPwm1Regs.TBPRD = (150E6 / 20E3) - 1;
+	EPwm1Regs.CMPB = EPwm1Regs.TBPRD * break_duty;
+}
 
 void TrainAbnormalPerson() {
 
 	switch (mode_num) {
 	case 1:
-
-		torque = a0 + a1 * cos(Encoder_deg_new * w)
+		break_duty = 1;
+		torque_fourier = a0 + a1 * cos(Encoder_deg_new * w)
 			+ b1 * sin(Encoder_deg_new * w)
 			+ a2 * cos(2 * Encoder_deg_new * w)
 			+ b2 * sin(2 * Encoder_deg_new * w)
@@ -618,13 +684,14 @@ void TrainAbnormalPerson() {
 			+ b3 * sin(3 * Encoder_deg_new * w)
 			+ a4 * cos(4 * Encoder_deg_new * w)
 			+ b4 * sin(4 * Encoder_deg_new * w);
+		torque = torque_fourier * 1000;
 		if(torque < 0)
 			torque = 0;
-		if(torque >= 30)
-			torque = 29.9;
+		if(torque >= 30000)
+			torque = 29900;
 
 		torque = torque / 40; // 감속비 40
-		torque = (torque / 0.75) * 1000;	// 모터 최대 토크 = 0.75
+		torque = (torque / 0.75) / 4;	// 모터 최대 토크 = 0.75
 		Torque_Calculate();
 		sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
 		MIR_transmit();
@@ -645,9 +712,8 @@ void TrainAbnormalPerson() {
 interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 200Hz
 {
 	MetabolizeRehabilitationRobot();
-
 	TrainAbnormalPerson();
-
+	OutputPWM();
 	PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 

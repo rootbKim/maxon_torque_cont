@@ -18,6 +18,7 @@ int a = 0;
 int Flash_bit=0;
 int flag = 0;
 long torque = 0;
+double torque_fourier = 0;
 int stuff_position = 0;
 int stuff_position2 = 0;
 int buff_i = 0;
@@ -58,6 +59,7 @@ double velocity = 0;
 double R_velocity = 0;
 double tablet_velocity = 0;
 double under_velocity = 0;
+float break_duty = 0;
 
 double       a0 =       21.92  ;
 double       a1 =      	-7.42  ;
