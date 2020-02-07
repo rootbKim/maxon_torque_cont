@@ -19,6 +19,11 @@ void Reg_setting_fun();
 void scic_echoback_init(void);
 void scic_fifo_init(void);
 
+void MetabolizeRehabilitationRobot();
+void Encoder_position_renew();
+void Encoder_value_calculation();
+void Moving_avg_degree();
+void Encoder_define();
 // Motor를 LCD 없이 동작시키기 위한 통신
 void MIR_transmit();
 void MIR_Put_String(char *MIR_string);
@@ -90,6 +95,8 @@ void main(void) {
    GpioDataRegs.GPBDAT.bit.GPIO51 = 0;
    DELAY_US(usec_delay);
 
+   Motor_Enable();
+
 // IDLE loop. Just sit and loop forever :
 //--------------------------------------------------------------------------------------------
 
@@ -97,10 +104,6 @@ void main(void) {
 
    }
 }
-
-// 메인함수 끝.
-
-//함수시작
 
 // 핀 설정
 void Reg_setting_fun() {
@@ -144,7 +147,6 @@ void scic_echoback_init() {
    //ScibRegs.SCILBAUD    =0x0079;
    //ScibRegs.SCICTL1.all =0x0023;  // Relinquish SCI from Reset
 }
-
 void scic_fifo_init() {
    ScicRegs.SCIFFTX.all = 0xE040;
    ScicRegs.SCIFFRX.bit.RXFIFORESET = 1;
@@ -152,6 +154,126 @@ void scic_fifo_init() {
    ScicRegs.SCIFFRX.bit.RXFFINTCLR = 1;
    ScicRegs.SCIFFRX.bit.RXFFIENA = 1;
    ScicRegs.SCIFFRX.bit.RXFFIL = 1;
+}
+
+void MetabolizeRehabilitationRobot() {
+
+	++TimerCount; //40 -> 2
+	++TimerCount_2;
+
+	//속도, 토크값 컴에서확인
+	if (TimerCount_2 == 2) {
+		TimerCount_2 = 0;
+		Encoder_define();
+	}
+
+	// MATLAB 2 -> 100Hz Bluetooth 40 -> 5Hz
+	if (TimerCount == 40) {
+		TimerCount = 0;
+		Flash_bit=!Flash_bit;
+		GpioDataRegs.GPBDAT.bit.GPIO48 = Flash_bit;
+	}
+}
+
+// LCD 없이 모터제어를 위한 통신프로토콜
+void Encoder_position_renew() {
+	Encoder[0] = GpioDataRegs.GPADAT.bit.GPIO5;
+	Encoder[1] = GpioDataRegs.GPBDAT.bit.GPIO37;
+	Encoder[2] = GpioDataRegs.GPADAT.bit.GPIO25;
+	Encoder[3] = GpioDataRegs.GPADAT.bit.GPIO27;
+	Encoder[4] = GpioDataRegs.GPADAT.bit.GPIO12;
+	Encoder[5] = GpioDataRegs.GPADAT.bit.GPIO14;
+	Encoder[6] = GpioDataRegs.GPBDAT.bit.GPIO32;
+	Encoder[7] = GpioDataRegs.GPADAT.bit.GPIO7;
+	Encoder[8] = GpioDataRegs.GPADAT.bit.GPIO9;
+	Encoder[9] = GpioDataRegs.GPADAT.bit.GPIO11;
+}
+void Encoder_value_calculation()
+{
+	Encoder_sum = 0;
+
+	for (Encoder_cnt = 0; Encoder_cnt < 10; Encoder_cnt++) {
+		Encoder_sum += Encoder[Encoder_cnt] << Encoder_cnt; // Encoder_sum 은 0-1024 Pulse까지의 수를 Count해줌.
+	}
+
+	Encoder_deg_new = 360 - (double) Encoder_sum * 0.3515625; // Encoder값 갱신. 1024 Pulse를 0 - 360 deg로 바꿔줌.
+	if (Encoder_deg_old - Encoder_deg_new >= 250) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
+		Encoder_revcnt++; // 회전수 체크
+
+	E_vel_deg_new = Encoder_revcnt * 360 + Encoder_deg_new;
+	move_dis = 0.001 * E_vel_deg_new * 1120 / 360; // m단위
+}
+
+void Moving_avg_degree()
+{
+	if (D_i < 19)
+	{
+		ED_Buff[D_i] = E_vel_deg_new; // 각도 buff 저장
+		D_i++;
+	}
+
+	else if (D_i == 19)
+	{
+		ED_Buff[D_i] = E_vel_deg_new;
+		ED_mva = 0.05 * (ED_Buff[0] + ED_Buff[1] + ED_Buff[2] + ED_Buff[3] + ED_Buff[4] + ED_Buff[5] + ED_Buff[6] + ED_Buff[7] + ED_Buff[8] + ED_Buff[9] +
+						 ED_Buff[10] + ED_Buff[11] + ED_Buff[12] + ED_Buff[13] + ED_Buff[14] + ED_Buff[15] + ED_Buff[16] + ED_Buff[17] + ED_Buff[18] + ED_Buff[19]); // 각도 moving avg
+		for(i=0; i<19; i++)
+		{
+			ED_Buff[i]=ED_Buff[i+1]; // 각도 buff renew
+		}
+
+		D_i=19;
+	}
+
+	Encoder_vel = (ED_mva - ED_mva_old) * 100; // 각속도 계산
+
+	if (E_i < 19)
+	{
+		EV_Buff[E_i] = Encoder_vel; // 각속도 buff 저장
+		E_i++;
+	}
+
+	else if (E_i == 19)
+	{
+		EV_Buff[E_i] = Encoder_vel;
+		EV_mva = 0.05 * (EV_Buff[0] + EV_Buff[1] + EV_Buff[2] + EV_Buff[3] + EV_Buff[4] + EV_Buff[5] + EV_Buff[6] + EV_Buff[7] + EV_Buff[8] + EV_Buff[9] +
+					   EV_Buff[10] + EV_Buff[11] + EV_Buff[12] + EV_Buff[13] + EV_Buff[14] + EV_Buff[15] + EV_Buff[16] + EV_Buff[17] + EV_Buff[18] + EV_Buff[19]); // 각속도 moving avg
+		for(i=0; i<19; i++)
+		{
+			EV_Buff[i]=EV_Buff[i+1]; // 각속도 buff renew
+		}
+
+		E_i=19;
+	}
+
+	Encoder_acc = (EV_mva - EV_mva_old) * 100;
+
+	if (Encoder_deg_old - Encoder_deg_new >= 250)
+	{
+		R_velocity = tablet_velocity / V_i;
+		tablet_velocity = 0;
+		V_i = 0;
+	}
+	if (Encoder_deg_new > Encoder_deg_old + 0.1)
+	{
+		tablet_velocity += Encoder_vel;
+		V_i++;
+	}
+}
+
+void Encoder_define() {
+	Encoder_deg_old = Encoder_deg_new; // 이전 Encoder값을 저장
+	E_vel_deg_old = E_vel_deg_new;
+	ED_mva_old = ED_mva;
+	EV_mva_old = EV_mva;
+
+	// Encoder Digital Input 값 받기
+	Encoder_position_renew();
+	Encoder_value_calculation();
+	Moving_avg_degree();
+	//각속도-->보행속도
+		velocity = R_velocity * 0.0112;
+		under_velocity = velocity * 10 - ((int) velocity) * 10;
 }
 
 // 포로토콜 전송
@@ -163,11 +285,9 @@ void MIR_Put_String(char *MIR_string) {
    }
 
 }
-
 void MIR_transmit() {
    MIR_Put_String(MIR1);
 }
-
 // 응답 코드 확인
 interrupt void scicRxFifoIsr(void) {
 
@@ -257,13 +377,11 @@ interrupt void scicRxFifoIsr(void) {
          a = 0;
       }
    }
-
    sprintf(RxBuff2, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", RxBuff[0], RxBuff[1], RxBuff[2], RxBuff[3], RxBuff[4], RxBuff[5], RxBuff[6], RxBuff[7], RxBuff[8], RxBuff[9], RxBuff[10], RxBuff[11], RxBuff[12], RxBuff[13]);
 
    ScicRegs.SCIFFRX.bit.RXFFOVRCLR = 1;         // Clear Overflow flag
    ScicRegs.SCIFFRX.bit.RXFFINTCLR = 1;         // Clear Interrupt flag
    PieCtrlRegs.PIEACK.all = PIEACK_GROUP8;      // Acknowledge interrupt to PIE
-
 }
 // RxBuff2로 응답 코드 확인
 
@@ -487,21 +605,50 @@ unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLeng
    return CRC;
 }
 
+void TrainAbnormalPerson() {
+
+	switch (mode_num) {
+	case 1:
+
+		torque = a0 + a1 * cos(Encoder_deg_new * w)
+			+ b1 * sin(Encoder_deg_new * w)
+			+ a2 * cos(2 * Encoder_deg_new * w)
+			+ b2 * sin(2 * Encoder_deg_new * w)
+			+ a3 * cos(3 * Encoder_deg_new * w)
+			+ b3 * sin(3 * Encoder_deg_new * w)
+			+ a4 * cos(4 * Encoder_deg_new * w)
+			+ b4 * sin(4 * Encoder_deg_new * w);
+		if(torque < 0)
+			torque = 0;
+		if(torque >= 30)
+			torque = 29.9;
+
+		torque = torque / 40; // 감속비 40
+		torque = (torque / 0.75) * 1000;	// 모터 최대 토크 = 0.75
+		Torque_Calculate();
+		sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
+		MIR_transmit();
+
+		break;
+	case 2:
+
+		torque = 0;
+
+		break;
+
+	case 3:
+		break;
+	}
+}
+
 // timer 인터럽트
 interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 200Hz
 {
-	Motor_Enable();
+	MetabolizeRehabilitationRobot();
 
-	Torque_Calculate();
+	TrainAbnormalPerson();
 
-   if(flag == 1)
-   {
-      sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
-      MIR_transmit();
-      flag = 0;
-   }
-
-   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
+	PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 
 //============================================================================================
