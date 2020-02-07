@@ -101,6 +101,8 @@ void main(void) {
 // 메인함수 끝.
 
 //함수시작
+
+// 핀 설정
 void Reg_setting_fun() {
    EALLOW;
    PieVectTable.TINT0 = &cpu_timer0_isr;
@@ -119,6 +121,7 @@ void Reg_setting_fun() {
    EDIS;
 }
 
+// 통신 설정
 void scic_echoback_init() {
    ScicRegs.SCICTL1.bit.SWRESET = 0;
    ScicRegs.SCICCR.bit.SCICHAR = 7;
@@ -151,6 +154,7 @@ void scic_fifo_init() {
    ScicRegs.SCIFFRX.bit.RXFFIL = 1;
 }
 
+// 포로토콜 전송
 void MIR_Put_String(char *MIR_string) {
    for(len = 0; len<protocol_len; len++) {
       ScicRegs.SCITXBUF = *MIR_string++;
@@ -164,6 +168,7 @@ void MIR_transmit() {
    MIR_Put_String(MIR1);
 }
 
+// 응답 코드 확인
 interrupt void scicRxFifoIsr(void) {
 
    Receivedbuff = ScicRegs.SCIRXBUF.bit.RXDT;
@@ -260,26 +265,9 @@ interrupt void scicRxFifoIsr(void) {
    PieCtrlRegs.PIEACK.all = PIEACK_GROUP8;      // Acknowledge interrupt to PIE
 
 }
+// RxBuff2로 응답 코드 확인
 
-void MetabolizeRehabilitationRobot() {
-
-   ++TimerCount; //40 -> 2
-   ++TimerCount_2;
-
-   //속도, 토크값 컴에서확인
-   if (TimerCount_2 == 2) {
-      TimerCount_2 = 0;
-            MIR_transmit();
-   }
-   // MATLAB 2 -> 100Hz Bluetooth 40 -> 5Hz
-   if (TimerCount == 40) {
-      TimerCount = 0;
-      Flash_bit=!Flash_bit;
-
-      GpioDataRegs.GPBDAT.bit.GPIO48 = Flash_bit;
-   }
-}
-
+// 초기 모터 Enable
 void Motor_Enable()
 {
 	switch(Enable_num){
@@ -316,6 +304,7 @@ void Motor_Enable()
 	}
 }
 
+// 토크 값 변환 및 CRC 계산
 void Torque_Calculate()
 {
 	unsigned short* hexadecimal = decimal2hex(torque);
@@ -450,6 +439,7 @@ void Torque_Calculate()
 	}
 }
 
+// hex값으로 변환
 unsigned short* decimal2hex(long torque)
 {
 	unsigned short hexadecimal[8] = {0, };
@@ -471,6 +461,8 @@ unsigned short* decimal2hex(long torque)
 
 	return hexadecimal;
 }
+
+// CRC 계산
 unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLength)
 {
    unsigned short shifter;
@@ -495,11 +487,9 @@ unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLeng
    return CRC;
 }
 
-interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 100Hz
+// timer 인터럽트
+interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 200Hz
 {
-
-//   MetabolizeRehabilitationRobot();
-
 	Motor_Enable();
 
 	Torque_Calculate();
