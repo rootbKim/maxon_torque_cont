@@ -61,16 +61,16 @@ double tablet_velocity = 0;
 double under_velocity = 0;
 float break_duty = 0;
 
-double       a0 =       21.92  ;
-double       a1 =      	-7.42  ;
-double       b1 =      0.6812  ;
-double       a2 =      -2.749  ;
-double       b2 =       0.619  ;
-double       a3 =      -1.719  ;
-double       b3 =      0.8584  ;
-double       a4 =     -0.4918  ;
-double       b4 =      -0.165  ;
-double       w =     0.03488   ;
+double       a0 =      -1.023  ;
+double       a1 =      -15.92  ;
+double       b1 =       2.829  ;
+double       a2 =      -5.777  ;
+double       b2 =       1.828  ;
+double       a3 =      -2.339  ;
+double       b3 =       1.829  ;
+double       a4 =     -0.9821  ;
+double       b4 =     -0.1068  ;
+double       w =      0.03482  ;
 
 // 통신 변수 선언.
 Uint16 TimerCount = 0, MotorCount = 0, TimerCount_2 = 0;

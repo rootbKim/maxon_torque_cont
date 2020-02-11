@@ -683,8 +683,8 @@ void TrainAbnormalPerson() {
 			+ a4 * cos(4 * Encoder_deg_new * w)
 			+ b4 * sin(4 * Encoder_deg_new * w);
 		torque = torque_fourier * 1000;
-		if(torque < 0)
-			torque = 0;
+		if(torque <= -30000)
+			torque = -29900;
 		if(torque >= 30000)
 			torque = 29900;
 
