@@ -99,8 +99,6 @@ void main(void) {
    GpioDataRegs.GPBDAT.bit.GPIO51 = 0;
    DELAY_US(usec_delay);
 
-   Motor_Enable();
-
 // IDLE loop. Just sit and loop forever :
 //--------------------------------------------------------------------------------------------
 
@@ -444,37 +442,37 @@ interrupt void scicRxFifoIsr(void) {
 // 초기 모터 Enable
 void Motor_Enable()
 {
-	switch(Enable_num){
-	case 1:
-	       sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x68, 0x04, 0x01, 0x40, 0x60, 0x00, 0x06, 0x00, 0x00, 0x00, 0x22, 0x99);
-	       MIR_transmit();
-	       Enable_num = 2;
-	       break;
-	case 2:
-		   sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x68, 0x04, 0x01, 0x40, 0x60, 0x00, 0x0f, 0x00, 0x00, 0x00, 0xb3, 0x07);
-		   MIR_transmit();
-		   Enable_num = 3;
-		   break;
-	case 3:
-		   sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x00, 0x51, 0x80);
-		   MIR_transmit();
-		   Enable_num = 4;
-		   break;
-	case 4:
-		   sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x01, 0x60, 0xb3);
-		   MIR_transmit();
-		   Enable_num = 5;
-		   break;
-	case 5:
-		   sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x02, 0x33, 0xe6);
-		   MIR_transmit();
-		   Enable_num = 6;
-		   break;
-	case 6:
-		   sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x03, 0x02, 0xd5);
-		   MIR_transmit();
-		   Enable_num = 0;
-		   break;
+		switch(Enable_num){
+		case 1:
+			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x68, 0x04, 0x01, 0x40, 0x60, 0x00, 0x06, 0x00, 0x00, 0x00, 0x22, 0x99);
+			MIR_transmit();
+			Enable_num = 2;
+			break;
+		case 2:
+			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x68, 0x04, 0x01, 0x40, 0x60, 0x00, 0x0f, 0x00, 0x00, 0x00, 0xb3, 0x07);
+			MIR_transmit();
+			Enable_num = 3;
+			break;
+		case 3:
+			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x00, 0x51, 0x80);
+			MIR_transmit();
+			Enable_num = 4;
+			break;
+		case 4:
+			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x01, 0x60, 0xb3);
+			MIR_transmit();
+			Enable_num = 5;
+			break;
+		case 5:
+			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x02, 0x33, 0xe6);
+			MIR_transmit();
+			Enable_num = 6;
+			break;
+		case 6:
+			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x03, 0x02, 0xd5);
+			MIR_transmit();
+			Enable_num = 0;
+			break;
 	}
 }
 
@@ -691,7 +689,7 @@ void TrainAbnormalPerson() {
 			torque = 29900;
 
 		torque = torque / 40; // 감속비 40
-		torque = (torque / 0.75) / 4;	// 모터 최대 토크 = 0.75
+		torque = (torque / 0.75);	// 모터 최대 토크 = 0.75
 		Torque_Calculate();
 		sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
 		MIR_transmit();
@@ -700,6 +698,9 @@ void TrainAbnormalPerson() {
 	case 2:
 
 		torque = 0;
+		Torque_Calculate();
+		sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
+		MIR_transmit();
 
 		break;
 
@@ -711,6 +712,8 @@ void TrainAbnormalPerson() {
 // timer 인터럽트
 interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 200Hz
 {
+	Motor_Enable();
+
 	MetabolizeRehabilitationRobot();
 	TrainAbnormalPerson();
 	OutputPWM();
