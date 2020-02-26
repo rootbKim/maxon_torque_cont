@@ -18,6 +18,9 @@ int a = 0;
 int Flash_bit=0;
 int flag = 0;
 long torque = 0;
+long torque_offset = 0;
+double max_motor_torque = 0.75;
+unsigned int gear_ratio = 40;
 double torque_fourier = 0;
 int stuff_position = 0;
 int stuff_position2 = 0;
@@ -71,6 +74,17 @@ double       b3 =       1.829  ;
 double       a4 =     -0.9821  ;
 double       b4 =     -0.1068  ;
 double       w =      0.03482  ;
+
+/*
+double       a0 =      -0.805  ;
+double       a1 =      -13.87  ;
+double       b1 =      -7.798  ;
+double       a2 =     -0.3677  ;
+double       b2 =     -1.1566  ;
+double       a3 =    -0.07837  ;
+double       b3 =      0.1774  ;
+double       w =       0.0349  ;
+*/
 
 // 통신 변수 선언.
 Uint16 TimerCount = 0, MotorCount = 0, TimerCount_2 = 0;

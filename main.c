@@ -510,7 +510,7 @@ void Torque_Calculate()
 		CRC = CalcFieldCRC(DataArray, 6);
 
 		uart[12] = (CRC & 0xff);
-		uart[13] = (CRC & (0xff << 8)) >> 8;
+		uart[13] = (CRC & 0xff00) >> 8;
 
 		if(uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90 || uart[12] == 0x90 || uart[13] == 0x90)
 		{
@@ -573,7 +573,7 @@ void Torque_Calculate()
 		CRC = CalcFieldCRC(DataArray, 6);
 
 		uart[12] = (CRC & 0xff);
-		uart[13] = (CRC & (0xff << 8)) >> 8;
+		uart[13] = (CRC & 0xff00) >> 8;
 
 		if(uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90 || uart[12] == 0x90 || uart[13] == 0x90)
 		{
@@ -614,7 +614,7 @@ void Torque_Calculate()
 // hex값으로 변환
 unsigned short* decimal2hex(long torque)
 {
-	unsigned short hexadecimal[8] = {0, };
+	static unsigned short hexadecimal[8] = {0, };
 	int position = 0;
 	long decimal = torque;
 
@@ -682,14 +682,15 @@ void TrainAbnormalPerson() {
 			+ b3 * sin(3 * Encoder_deg_new * w)
 			+ a4 * cos(4 * Encoder_deg_new * w)
 			+ b4 * sin(4 * Encoder_deg_new * w);
-		torque = torque_fourier * 1000;
+
+		torque = ((torque_fourier+torque_offset) * 1000);
 		if(torque <= -30000)
 			torque = -29900;
 		if(torque >= 30000)
 			torque = 29900;
 
-		torque = torque / 40; // 감속비 40
-		torque = (torque / 0.75);	// 모터 최대 토크 = 0.75
+		torque = torque / gear_ratio; // 감속비 40
+		torque = (torque / max_motor_torque);	// 모터 최대 토크 = 0.75
 		Torque_Calculate();
 		sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
 		MIR_transmit();
