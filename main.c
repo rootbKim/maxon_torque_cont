@@ -30,6 +30,7 @@ void MIR_Put_String(char *MIR_string);
 void Motor_Enable();
 unsigned short* decimal2hex(long torque);
 unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLength);
+void Timer_set();
 
 void InitEPwm1Module(void);
 void OutputPWM();
@@ -69,7 +70,7 @@ void main(void) {
    // CPU Timer 초기화
    InitCpuTimers();
    Cpu_Clk = 150;          // 현재 시스템 클럭을 설정 (MHz 단위)
-   Timer_Prd = 5000;      // 타이머 주기 설정 (usec 단위) // 200 Hz -> 5000
+   Timer_Prd = 1000;      // 타이머 주기 설정 (usec 단위) // 1000 Hz -> 1000
    ConfigCpuTimer(&CpuTimer0, Cpu_Clk, Timer_Prd);
 
    // CPU Timer0 시작
@@ -221,8 +222,8 @@ void MetabolizeRehabilitationRobot() {
 		Encoder_define();
 	}
 
-	// MATLAB 2 -> 100Hz Bluetooth 40 -> 5Hz
-	if (TimerCount == 40) {
+	// MATLAB 2 -> 1000Hz 40 -> 5Hz
+	if (TimerCount == 200) {
 		TimerCount = 0;
 		Flash_bit=!Flash_bit;
 		GpioDataRegs.GPBDAT.bit.GPIO48 = Flash_bit;
@@ -255,7 +256,7 @@ void Encoder_value_calculation()
 		Encoder_revcnt++; // 회전수 체크
 
 	E_vel_deg_new = Encoder_revcnt * 360 + Encoder_deg_new;
-	move_dis = 0.001 * E_vel_deg_new * 1120 / 360; // m단위
+	move_dis = 0.001 * E_vel_deg_new * 1190 / 360; // m단위
 }
 
 void Moving_avg_degree()
@@ -326,7 +327,7 @@ void Encoder_define() {
 	Encoder_value_calculation();
 	Moving_avg_degree();
 	//각속도-->보행속도
-		velocity = R_velocity * 0.0112;
+		velocity = R_velocity * 0.0119;
 		under_velocity = velocity * 10 - ((int) velocity) * 10;
 }
 
@@ -614,16 +615,20 @@ void Torque_Calculate()
 // hex값으로 변환
 unsigned short* decimal2hex(long torque)
 {
-	static unsigned short hexadecimal[8] = {0, };
 	int position = 0;
 	long decimal = torque;
+
+	for(i=0; i<8; i++)
+	{
+		decimal2hexadecimal[i] = 0;
+	}
 
 	if(decimal < 0) decimal = -decimal;
 
 	while(1)
 	{
 		int mod = decimal % 16;
-		hexadecimal[position] = mod;
+		decimal2hexadecimal[position] = mod;
 		decimal = decimal / 16;
 		position++;
 
@@ -631,7 +636,7 @@ unsigned short* decimal2hex(long torque)
 			break;
 	}
 
-	return hexadecimal;
+	return decimal2hexadecimal;
 }
 
 // CRC 계산
@@ -669,6 +674,21 @@ void OutputPWM() {
 	EPwm1Regs.CMPB = EPwm1Regs.TBPRD * break_duty;
 }
 
+void Timer_set() {
+
+	DegTimer = DegTimer+0.001;
+
+	if(DegTimer >= 2.142)
+	{
+		DegTimer = 0;
+	}
+//	if (Encoder_deg_time_old - Encoder_deg_time_new >= 250) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
+//			time_Encoder_revcnt++; // 회전수 체크
+
+		E_vel_deg_time = Encoder_revcnt * 360 + Encoder_deg_time;
+
+}
+
 void TrainAbnormalPerson() {
 
 	switch (mode_num) {
@@ -683,14 +703,36 @@ void TrainAbnormalPerson() {
 			+ a4 * cos(4 * Encoder_deg_new * w)
 			+ b4 * sin(4 * Encoder_deg_new * w);
 
-		torque = ((torque_fourier+torque_offset) * 1000);
-		if(torque <= -30000)
-			torque = -29900;
-		if(torque >= 30000)
-			torque = 29900;
+		Timer_set();
+		Encoder_deg_time = ae0 + ae1 * cos(DegTimer * we)
+		+ be1 * sin(DegTimer * we)
+		+ ae2 * cos(2 * DegTimer * we)
+		+ be2 * sin(2 * DegTimer * we)
+		+ ae3 * cos(3 * DegTimer * we)
+		+ be3 * sin(3 * DegTimer * we)
+		+ ae4 * cos(4 * DegTimer * we)
+		+ be4 * sin(4 * DegTimer * we)
+		+ ae5 * cos(5 * DegTimer * we)
+		+ be5 * sin(5 * DegTimer * we)
+		+ ae6 * cos(6 * DegTimer * we)
+		+ be6 * sin(6 * DegTimer * we)
+		+ ae7 * cos(7 * DegTimer * we)
+		+ be7 * sin(7 * DegTimer * we)
+		+ ae8 * cos(8 * DegTimer * we)
+		+ be8 * sin(8 * DegTimer * we);
 
-		torque = torque / gear_ratio; // 감속비 40
-		torque = (torque / max_motor_torque);	// 모터 최대 토크 = 0.75
+		Position_error = (E_vel_deg_time - E_vel_deg_new) * 0.002778;
+		if(Position_error <= 0) Position_error = 0;
+		torque_fourier = torque_fourier + Kp * Position_error;
+
+		torque = ((torque_fourier+torque_offset) * 1000);
+		if(torque <= 0)
+			torque = 0;
+		if(torque >= 45000)
+			torque = 44900;
+
+		torque = torque / gear_ratio; // 감속비 60
+		torque = (torque / max_motor_torque);	// 모터 정격 토크 = 0.75
 		Torque_Calculate();
 		sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
 		MIR_transmit();
@@ -711,11 +753,12 @@ void TrainAbnormalPerson() {
 }
 
 // timer 인터럽트
-interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 200Hz
+interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 1000Hz
 {
 	Motor_Enable();
 
 	MetabolizeRehabilitationRobot();
+
 	TrainAbnormalPerson();
 	OutputPWM();
 	PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;

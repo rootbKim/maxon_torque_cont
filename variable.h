@@ -18,14 +18,21 @@ int a = 0;
 int Flash_bit=0;
 int flag = 0;
 long torque = 0;
-long torque_offset = 0;
+double torque_offset = 0;
 double max_motor_torque = 0.75;
-unsigned int gear_ratio = 40;
+unsigned int gear_ratio = 60;
 double torque_fourier = 0;
 int stuff_position = 0;
 int stuff_position2 = 0;
 int buff_i = 0;
 int stuff_i = 0;
+unsigned short decimal2hexadecimal[8] = {0, };
+
+double DegTimer = 0;
+double Encoder_deg_time = 0;
+double E_vel_deg_time = 0;
+double Position_error = 0;
+double Kp = 0;
 
 extern Uint16 RamfuncsLoadStart;
 extern Uint16 RamfuncsLoadEnd;
@@ -64,17 +71,37 @@ double tablet_velocity = 0;
 double under_velocity = 0;
 float break_duty = 0;
 
-double       a0 =      -1.023  ;
-double       a1 =      -15.92  ;
-double       b1 =       2.829  ;
-double       a2 =      -5.777  ;
-double       b2 =       1.828  ;
-double       a3 =      -2.339  ;
-double       b3 =       1.829  ;
-double       a4 =     -0.9821  ;
-double       b4 =     -0.1068  ;
-double       w =      0.03482  ;
+// Newton_2km
+double       a0 =      -0.2778  ;
+double       a1 =       -2.473  ;
+double       b1 =        -1.49  ;
+double       a2 =      -0.7655  ;
+double       b2 =      -0.2943  ;
+double       a3 =      -0.3182  ;
+double       b3 =       0.1401  ;
+double       a4 =      -0.1315  ;
+double       b4 =      -0.1185  ;
+double       w =        0.0349  ;
 
+// Encoder_deg_time
+double       ae0 =       178.8  ;
+double       ae1 =      -127.6  ;
+double       be1 =      -95.55  ;
+double       ae2 =      -65.83  ;
+double       be2 =        18.9  ;
+double       ae3 =      -6.494  ;
+double       be3 =        33.9  ;
+double       ae4 =       9.825  ;
+double       be4 =       15.11  ;
+double       ae5 =       8.628  ;
+double       be5 =       0.712  ;
+double       ae6 =       3.074  ;
+double       be6 =      -2.617  ;
+double       ae7 =     -0.0374  ;
+double       be7 =      -1.438  ;
+double       ae8 =      -0.327  ;
+double       be8 =     -0.3416  ;
+double       we =       2.0048  ;
 /*
 double       a0 =      -0.805  ;
 double       a1 =      -13.87  ;
