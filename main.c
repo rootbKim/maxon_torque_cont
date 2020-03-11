@@ -5,8 +5,12 @@
 #include "string.h"
 #include "variable.h"
 
-#pragma CODE_SECTION(MIR_transmit,"ramfuncs")
-#pragma CODE_SECTION(MIR_Put_String,"ramfuncs")
+#pragma CODE_SECTION(Uart_transmit,"ramfuncs")
+#pragma CODE_SECTION(UART_Put_String,"ramfuncs")
+#pragma CODE_SECTION(BT_transmit,"ramfuncs")
+#pragma CODE_SECTION(MAXON_transmit,"ramfuncs")
+#pragma CODE_SECTION(MAXON_Put_String,"ramfuncs")
+#pragma CODE_SECTION(TrainAbnormalPerson,"ramfuncs")
 
 // CPU timer0 선언 //
 interrupt void cpu_timer0_isr(void);
@@ -16,6 +20,10 @@ void MetabolizeRehabilitationRobot();
 void Reg_setting_fun();
 
 // 통신 설정을 위한 함수 //
+void scia_echoback_init(void);
+void scia_fifo_init(void);
+void scib_echoback_init(void);
+void scib_fifo_init(void);
 void scic_echoback_init(void);
 void scic_fifo_init(void);
 
@@ -24,9 +32,14 @@ void Encoder_position_renew();
 void Encoder_value_calculation();
 void Moving_avg_degree();
 void Encoder_define();
-// Motor를 LCD 없이 동작시키기 위한 통신
-void MIR_transmit();
-void MIR_Put_String(char *MIR_string);
+
+void BT_transmit();
+void BT_Put_String(char *BT_string);
+void Uart_transmit();
+void UART_Put_String(char *Uart_string);
+void MAXON_transmit();
+void MAXON_Put_String(char *MAXON_string);
+
 void Motor_Enable();
 unsigned short* decimal2hex(long torque);
 unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLength);
@@ -70,7 +83,7 @@ void main(void) {
    // CPU Timer 초기화
    InitCpuTimers();
    Cpu_Clk = 150;          // 현재 시스템 클럭을 설정 (MHz 단위)
-   Timer_Prd = 1000;      // 타이머 주기 설정 (usec 단위) // 1000 Hz -> 1000
+   Timer_Prd = 5000;      // 타이머 주기 설정 (usec 단위) // 200 Hz -> 5000
    ConfigCpuTimer(&CpuTimer0, Cpu_Clk, Timer_Prd);
 
    // CPU Timer0 시작
@@ -82,11 +95,15 @@ void main(void) {
    IER = IER | M_INT1 | M_INT8;              // CPU 인터럽트(INT1), SCIRXC  활성화
 
    // 통신함수 초기화
-   scic_fifo_init();      // Initialize the SCI FIFO
-   scic_echoback_init();  // Initalize SCI for echoback
+	scia_fifo_init();      // Initialize the SCI FIFO
+	scia_echoback_init();  // Initalize SCI for echoback
+	scib_fifo_init();      // Initialize the SCI FIFO
+	scib_echoback_init();  // Initalize SCI for echoback
+	scic_fifo_init();      // Initialize the SCI FIFO
+	scic_echoback_init();  // Initalize SCI for echoback
 
    for (i = 0; i < 100; i++)
-      MIR1[i] = 0;
+	   MAXON[i] = 0;
 
    EINT;
    // Enable Global interrupt INTM
@@ -180,6 +197,66 @@ void InitEPwm1Module(void) {
 }
 
 // 통신 설정
+void scia_echoback_init() {
+	SciaRegs.SCICTL1.bit.SWRESET = 0;
+	SciaRegs.SCICCR.bit.SCICHAR = 7; // 1 stop bit, No loopback, No parity, 8 char bits,
+	SciaRegs.SCICTL1.bit.RXENA = 1;    // SCI 송신기능 Enable
+	SciaRegs.SCICTL1.bit.TXENA = 1;    // async mode, idle-line protocol
+	SciaRegs.SCICTL2.all = 0x0003;
+	SciaRegs.SCICTL2.bit.TXINTENA = 1;
+	SciaRegs.SCICTL2.bit.RXBKINTENA = 1;
+
+#if (CPU_FRQ_150MHZ)
+	SciaRegs.SCIHBAUD = 0x0000;  // 115200 baud @LSPCLK = 37.5MHz.
+	SciaRegs.SCILBAUD = 0x0028;
+#endif
+#if (CPU_FRQ_100MHZ)
+	SciaRegs.SCIHBAUD =0x0001;  // 9600 baud @LSPCLK = 20MHz.
+	SciaRegs.SCILBAUD =0x0044;
+#endif
+	SciaRegs.SCICTL1.bit.SWRESET = 1;
+	//SciaRegs.SCIHBAUD    =0x0000;  // 38400 baud @LSPCLK = 37.5MHz.
+	//SciaRegs.SCILBAUD    =0x0079;
+	//SciaRegs.SCICTL1.all =0x0023;  // Relinquish SCI from Reset
+}
+void scia_fifo_init() {
+	SciaRegs.SCIFFTX.all = 0xE040;
+	SciaRegs.SCIFFRX.bit.RXFIFORESET = 1;
+	SciaRegs.SCIFFCT.all = 0x0;
+	SciaRegs.SCIFFRX.bit.RXFFINTCLR = 1;
+	SciaRegs.SCIFFRX.bit.RXFFIENA = 1;
+	SciaRegs.SCIFFRX.bit.RXFFIL = 1;
+}
+void scib_echoback_init() {
+	ScibRegs.SCICTL1.bit.SWRESET = 0;
+	ScibRegs.SCICCR.bit.SCICHAR = 7; // 1 stop bit, No loopback, No parity, 8 char bits,
+	ScibRegs.SCICTL1.bit.RXENA = 1;    // SCI 송신기능 Enable
+	ScibRegs.SCICTL1.bit.TXENA = 1;    // async mode, idle-line protocol
+	ScibRegs.SCICTL2.all = 0x0003;
+	ScibRegs.SCICTL2.bit.TXINTENA = 1;
+	ScibRegs.SCICTL2.bit.RXBKINTENA = 1;
+
+#if (CPU_FRQ_150MHZ)
+	ScibRegs.SCIHBAUD = 0x0000;  // 115200 baud @LSPCLK = 37.5MHz.
+	ScibRegs.SCILBAUD = 0x0028;
+#endif
+#if (CPU_FRQ_100MHZ)
+	ScibRegs.SCIHBAUD =0x0001;  // 9600 baud @LSPCLK = 20MHz.
+	ScibRegs.SCILBAUD =0x0044;
+#endif
+	ScibRegs.SCICTL1.bit.SWRESET = 1;
+	//ScibRegs.SCIHBAUD    =0x0000;  // 38400 baud @LSPCLK = 37.5MHz.
+	//ScibRegs.SCILBAUD    =0x0079;
+	//ScibRegs.SCICTL1.all =0x0023;  // Relinquish SCI from Reset
+}
+void scib_fifo_init() {
+	ScibRegs.SCIFFTX.all = 0xE040;
+	ScibRegs.SCIFFRX.bit.RXFIFORESET = 1;
+	ScibRegs.SCIFFCT.all = 0x0;
+	ScibRegs.SCIFFRX.bit.RXFFINTCLR = 1;
+	ScibRegs.SCIFFRX.bit.RXFFIENA = 1;
+	ScibRegs.SCIFFRX.bit.RXFFIL = 1;
+}
 void scic_echoback_init() {
    ScicRegs.SCICTL1.bit.SWRESET = 0;
    ScicRegs.SCICCR.bit.SCICHAR = 7;
@@ -217,14 +294,18 @@ void MetabolizeRehabilitationRobot() {
 	++TimerCount_2;
 
 	//속도, 토크값 컴에서확인
-	if (TimerCount_2 == 2) {
+	if (TimerCount_2 == 1) {
 		TimerCount_2 = 0;
 		Encoder_define();
 	}
 
-	// MATLAB 2 -> 1000Hz 40 -> 5Hz
-	if (TimerCount == 200) {
+	// MATLAB 2 -> 200Hz 40 -> 5Hz
+	if (TimerCount == 40) {
 		TimerCount = 0;
+		if(mode_num == 1)
+		{
+			Uart_transmit();
+		}
 		Flash_bit=!Flash_bit;
 		GpioDataRegs.GPBDAT.bit.GPIO48 = Flash_bit;
 	}
@@ -252,8 +333,10 @@ void Encoder_value_calculation()
 	}
 
 	Encoder_deg_new = 360 - (double) Encoder_sum * 0.3515625; // Encoder값 갱신. 1024 Pulse를 0 - 360 deg로 바꿔줌.
-	if (Encoder_deg_old - Encoder_deg_new >= 250) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
+	if (Encoder_deg_old - Encoder_deg_new >= 250 && mode_num == 1) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
 		Encoder_revcnt++; // 회전수 체크
+	if (Encoder_deg_old - Encoder_deg_new <= -250 && mode_num == 1)
+		Encoder_revcnt--;
 
 	E_vel_deg_new = Encoder_revcnt * 360 + Encoder_deg_new;
 	move_dis = 0.001 * E_vel_deg_new * 1190 / 360; // m단위
@@ -280,7 +363,7 @@ void Moving_avg_degree()
 		D_i=19;
 	}
 
-	Encoder_vel = (ED_mva - ED_mva_old) * 100; // 각속도 계산
+	Encoder_vel = (ED_mva - ED_mva_old) * 200; // 각속도 계산
 
 	if (E_i < 19)
 	{
@@ -301,7 +384,7 @@ void Moving_avg_degree()
 		E_i=19;
 	}
 
-	Encoder_acc = (EV_mva - EV_mva_old) * 100;
+	Encoder_acc = (EV_mva - EV_mva_old) * 200;
 
 	if (Encoder_deg_old - Encoder_deg_new >= 250)
 	{
@@ -331,18 +414,50 @@ void Encoder_define() {
 		under_velocity = velocity * 10 - ((int) velocity) * 10;
 }
 
+void BT_Put_String(char *BT_string) {
+	while (*BT_string != 0) {
+		SciaRegs.SCITXBUF = *BT_string++;
+		while (SciaRegs.SCIFFTX.bit.TXFFST != 0) {
+		}
+	}
+}
+
+void UART_Put_String(char *Uart_string) {
+	while (*Uart_string != 0) {
+		ScibRegs.SCITXBUF = *Uart_string++;
+		while (ScibRegs.SCIFFTX.bit.TXFFST != 0) {
+		}
+	}
+}
+
 // 포로토콜 전송
-void MIR_Put_String(char *MIR_string) {
+void MAXON_Put_String(char *MAXON_string) {
    for(len = 0; len<protocol_len; len++) {
-      ScicRegs.SCITXBUF = *MIR_string++;
+      ScicRegs.SCITXBUF = *MAXON_string++;
       while (ScicRegs.SCIFFTX.bit.TXFFST != 0) {
       }
    }
 
 }
-void MIR_transmit() {
-   MIR_Put_String(MIR1);
+void MAXON_transmit() {
+   MAXON_Put_String(MAXON);
 }
+
+void BT_transmit() {
+/*	sprintf(BT, "!s%d.%dt%d%d%d%dd%d%d%d%d?\n\0",
+			(int) velocity, (int) under_velocity,
+			time_now_min_10, time_now_min_1, time_now_sec_10, time_now_sec_1,
+			move_distance_1000, move_distance_100, move_distance_10,move_distance_1);
+
+	BT_Put_String(BT);*/
+}
+
+void Uart_transmit() {
+	sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * torque), (long) (10000 * torque_fourier), (long) (10000 * torque_buffer), (long) (10000 * Position_error), (long) (10000 * Encoder_deg_time), (long) (10000 * Encoder_deg_new), (long) (10000 * time_Encoder_revcnt), (long) (10000 * Encoder_revcnt), (long) (10000 * Kp), (long) (10000 * velocity));
+
+	UART_Put_String(UT);
+}
+
 // 응답 코드 확인
 interrupt void scicRxFifoIsr(void) {
 
@@ -445,34 +560,35 @@ void Motor_Enable()
 {
 		switch(Enable_num){
 		case 1:
-			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x68, 0x04, 0x01, 0x40, 0x60, 0x00, 0x06, 0x00, 0x00, 0x00, 0x22, 0x99);
-			MIR_transmit();
+			sprintf(MAXON, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x68, 0x04, 0x01, 0x40, 0x60, 0x00, 0x06, 0x00, 0x00, 0x00, 0x22, 0x99);
+			MAXON_transmit();
 			Enable_num = 2;
 			break;
 		case 2:
-			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x68, 0x04, 0x01, 0x40, 0x60, 0x00, 0x0f, 0x00, 0x00, 0x00, 0xb3, 0x07);
-			MIR_transmit();
+			sprintf(MAXON, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x68, 0x04, 0x01, 0x40, 0x60, 0x00, 0x0f, 0x00, 0x00, 0x00, 0xb3, 0x07);
+			MAXON_transmit();
 			Enable_num = 3;
 			break;
 		case 3:
-			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x00, 0x51, 0x80);
-			MIR_transmit();
+			sprintf(MAXON, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x00, 0x51, 0x80);
+			MAXON_transmit();
 			Enable_num = 4;
 			break;
 		case 4:
-			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x01, 0x60, 0xb3);
-			MIR_transmit();
+			sprintf(MAXON, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x01, 0x60, 0xb3);
+			MAXON_transmit();
 			Enable_num = 5;
 			break;
 		case 5:
-			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x02, 0x33, 0xe6);
-			MIR_transmit();
+			sprintf(MAXON, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x02, 0x33, 0xe6);
+			MAXON_transmit();
 			Enable_num = 6;
 			break;
 		case 6:
-			sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x03, 0x02, 0xd5);
-			MIR_transmit();
+			sprintf(MAXON, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x03, 0x02, 0xd5);
+			MAXON_transmit();
 			Enable_num = 0;
+			Enable_bit = 0;
 			break;
 	}
 }
@@ -676,17 +792,17 @@ void OutputPWM() {
 
 void Timer_set() {
 
-	DegTimer = DegTimer+0.001;
+	DegTimer = DegTimer + 0.005;
 
-	if(DegTimer >= 2.142)
+	if(DegTimer >= 2.145)
 	{
 		DegTimer = 0;
 	}
-//	if (Encoder_deg_time_old - Encoder_deg_time_new >= 250) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
-//			time_Encoder_revcnt++; // 회전수 체크
+	if (Encoder_deg_time_old - Encoder_deg_time >= 250) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
+			time_Encoder_revcnt++; // 회전수 체크
 
-		E_vel_deg_time = Encoder_revcnt * 360 + Encoder_deg_time;
-
+	E_vel_deg_time = Encoder_revcnt * 360 + Encoder_deg_time;
+	Encoder_deg_time_old = Encoder_deg_time;
 }
 
 void TrainAbnormalPerson() {
@@ -721,11 +837,13 @@ void TrainAbnormalPerson() {
 		+ ae8 * cos(8 * DegTimer * we)
 		+ be8 * sin(8 * DegTimer * we);
 
-		Position_error = (E_vel_deg_time - E_vel_deg_new) * 0.002778;
-		if(Position_error <= 0) Position_error = 0;
-		torque_fourier = torque_fourier + Kp * Position_error;
+		Position_error = Encoder_deg_time - Encoder_deg_new;
+		if(time_Encoder_revcnt > Encoder_revcnt) Position_error = Position_error + 360;
+		else if(time_Encoder_revcnt < Encoder_revcnt) Position_error = Position_error - 360;
 
-		torque = ((torque_fourier+torque_offset) * 1000);
+		torque_buffer = torque_fourier + torque_offset + Kp * Position_error;
+
+		torque = torque_buffer * 1000;
 		if(torque <= 0)
 			torque = 0;
 		if(torque >= 45000)
@@ -734,16 +852,20 @@ void TrainAbnormalPerson() {
 		torque = torque / gear_ratio; // 감속비 60
 		torque = (torque / max_motor_torque);	// 모터 정격 토크 = 0.75
 		Torque_Calculate();
-		sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
-		MIR_transmit();
+		sprintf(MAXON, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
+		MAXON_transmit();
 
 		break;
 	case 2:
 
 		torque = 0;
+		DegTimer = 0;
+		Encoder_revcnt = 0;
+		time_Encoder_revcnt = 0;
+		if(Encoder_deg_new >=0 && Encoder_deg_new <= 1.0) break_duty = 0;
 		Torque_Calculate();
-		sprintf(MIR1, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
-		MIR_transmit();
+		sprintf(MAXON, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
+		MAXON_transmit();
 
 		break;
 
@@ -753,9 +875,12 @@ void TrainAbnormalPerson() {
 }
 
 // timer 인터럽트
-interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 1000Hz
+interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 200Hz
 {
-	Motor_Enable();
+	if(Enable_bit)
+	{
+		Motor_Enable();
+	}
 
 	MetabolizeRehabilitationRobot();
 
