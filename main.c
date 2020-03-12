@@ -43,6 +43,7 @@ void MAXON_Put_String(char *MAXON_string);
 void Motor_Enable();
 unsigned short* decimal2hex(long torque);
 unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLength);
+void torque_fourier_constant(double target_gain);
 void Timer_set();
 
 void InitEPwm1Module(void);
@@ -408,7 +409,7 @@ void Encoder_define() {
 	// Encoder Digital Input 값 받기
 	Encoder_position_renew();
 	Encoder_value_calculation();
-	Moving_avg_degree();
+	if(mode_num == 1)	Moving_avg_degree();
 	//각속도-->보행속도
 		velocity = R_velocity * 0.0119;
 		under_velocity = velocity * 10 - ((int) velocity) * 10;
@@ -453,7 +454,7 @@ void BT_transmit() {
 }
 
 void Uart_transmit() {
-	sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * torque), (long) (10000 * torque_fourier), (long) (10000 * torque_buffer), (long) (10000 * Position_error), (long) (10000 * Encoder_deg_time), (long) (10000 * Encoder_deg_new), (long) (10000 * time_Encoder_revcnt), (long) (10000 * Encoder_revcnt), (long) (10000 * Kp), (long) (10000 * velocity));
+	sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * torque), (long) (10000 * torque_interpolation), (long) (10000 * torque_buffer), (long) (10000 * Position_error), (long) (10000 * Encoder_deg_time), (long) (10000 * Encoder_deg_new), (long) (10000 * time_Encoder_revcnt), (long) (10000 * Encoder_revcnt), (long) (10000 * Kp), (long) (10000 * velocity));
 
 	UART_Put_String(UT);
 }
@@ -790,11 +791,20 @@ void OutputPWM() {
 	EPwm1Regs.CMPB = EPwm1Regs.TBPRD * break_duty;
 }
 
+void torque_fourier_constant(double target_gain)
+{
+	int target_num = target_gain*10;
+	double base_num = (double)(target_num) / 20;
+	gain_bit = 0;
+	we = w_base * base_num;
+	SetDegTimer = BaseDegTimer / base_num;
+}
+
 void Timer_set() {
 
 	DegTimer = DegTimer + 0.005;
 
-	if(DegTimer >= 2.145)
+	if(DegTimer >= SetDegTimer)
 	{
 		DegTimer = 0;
 	}
@@ -810,14 +820,26 @@ void TrainAbnormalPerson() {
 	switch (mode_num) {
 	case 1:
 		break_duty = 1;
-		torque_fourier = a0 + a1 * cos(Encoder_deg_new * w)
-			+ b1 * sin(Encoder_deg_new * w)
-			+ a2 * cos(2 * Encoder_deg_new * w)
-			+ b2 * sin(2 * Encoder_deg_new * w)
-			+ a3 * cos(3 * Encoder_deg_new * w)
-			+ b3 * sin(3 * Encoder_deg_new * w)
-			+ a4 * cos(4 * Encoder_deg_new * w)
-			+ b4 * sin(4 * Encoder_deg_new * w);
+
+		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
+			+ b1_1 * sin(Encoder_deg_new * w_1)
+			+ a2_1 * cos(2 * Encoder_deg_new * w_1)
+			+ b2_1 * sin(2 * Encoder_deg_new * w_1)
+			+ a3_1 * cos(3 * Encoder_deg_new * w_1)
+			+ b3_1 * sin(3 * Encoder_deg_new * w_1)
+			+ a4_1 * cos(4 * Encoder_deg_new * w_1)
+			+ b4_1 * sin(4 * Encoder_deg_new * w_1);
+		torque_fourier_3 = a0_3 + a1_3 * cos(Encoder_deg_new * w_3)
+			+ b1_3 * sin(Encoder_deg_new * w_3)
+			+ a2_3 * cos(2 * Encoder_deg_new * w_3)
+			+ b2_3 * sin(2 * Encoder_deg_new * w_3)
+			+ a3_3 * cos(3 * Encoder_deg_new * w_3)
+			+ b3_3 * sin(3 * Encoder_deg_new * w_3)
+			+ a4_3 * cos(4 * Encoder_deg_new * w_3)
+			+ b4_3 * sin(4 * Encoder_deg_new * w_3);
+
+		if(target_gain >= 1)	torque_interpolation = ((3-target_gain)/2) * torque_fourier_1 + ((target_gain-1)/2) * torque_fourier_3;
+		else if(target_gain < 1) torque_interpolation = target_gain * torque_fourier_1;
 
 		Timer_set();
 		Encoder_deg_time = ae0 + ae1 * cos(DegTimer * we)
@@ -841,7 +863,10 @@ void TrainAbnormalPerson() {
 		if(time_Encoder_revcnt > Encoder_revcnt) Position_error = Position_error + 360;
 		else if(time_Encoder_revcnt < Encoder_revcnt) Position_error = Position_error - 360;
 
-		torque_buffer = torque_fourier + torque_offset + Kp * Position_error;
+//		integrator += Ki * Position_error * 0.005;
+//		if(integrator >= 10)	integrator = 10;
+//		else if(integrator <= -10)	integrator = -10;
+		torque_buffer = torque_interpolation * torque_scale + Kp * Position_error - Kd * Encoder_vel; // + integrator;
 
 		torque = torque_buffer * 1000;
 		if(torque <= 0)
@@ -862,14 +887,17 @@ void TrainAbnormalPerson() {
 		DegTimer = 0;
 		Encoder_revcnt = 0;
 		time_Encoder_revcnt = 0;
+		Encoder_vel = 0;
+		integrator = 0;
+		for(D_i = 0; i<20; i++)	ED_Buff[D_i] = 0;
 		if(Encoder_deg_new >=0 && Encoder_deg_new <= 1.0) break_duty = 0;
 		Torque_Calculate();
 		sprintf(MAXON, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", uart[0], uart[1], uart[2], uart[3], uart[4], uart[5], uart[6], uart[7], uart[8], uart[9], uart[10], uart[11], uart[12], uart[13], uart[14], uart[15], uart[16], uart[17]);
 		MAXON_transmit();
 
 		break;
-
 	case 3:
+
 		break;
 	}
 }
@@ -877,10 +905,8 @@ void TrainAbnormalPerson() {
 // timer 인터럽트
 interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 200Hz
 {
-	if(Enable_bit)
-	{
-		Motor_Enable();
-	}
+	if(Enable_bit)	Motor_Enable();
+	if(gain_bit)	torque_fourier_constant(target_gain);
 
 	MetabolizeRehabilitationRobot();
 

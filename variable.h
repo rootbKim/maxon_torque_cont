@@ -18,11 +18,15 @@ int a = 0;
 int Flash_bit=0;
 int flag = 0;
 int Enable_bit = 0;
+int gain_bit = 0;
 long torque = 0;
-double torque_offset = 5.5; // 마찰력 보상(200310)
+//double torque_offset = 5.5; // 마찰력 보상(200310)
+double torque_scale = 4.3;
 double max_motor_torque = 0.75;
 unsigned int gear_ratio = 60;
-double torque_fourier = 0;
+double torque_fourier_1 = 0;	// 1km/h fourier
+double torque_fourier_3 = 0;	// 3km/h fourier
+double torque_interpolation = 0;
 double torque_buffer = 0;
 int stuff_position = 0;
 int stuff_position2 = 0;
@@ -31,12 +35,19 @@ int stuff_i = 0;
 unsigned short decimal2hexadecimal[8] = {0, };
 
 double DegTimer = 0;
+double BaseDegTimer = 2.142;  // 2km/h
+double SetDegTimer = 0;
 double Encoder_deg_time = 0;
 double Encoder_deg_time_old = 0;
 Uint32 time_Encoder_revcnt = 0;
 double E_vel_deg_time = 0;
 double Position_error = 0;
-double Kp = 0.02;
+double integrator = 0;
+double Kp = 0.31;
+double Kd = 0.21;
+double Ki = 0;
+
+double target_gain = 0;
 
 extern Uint16 RamfuncsLoadStart;
 extern Uint16 RamfuncsLoadEnd;
@@ -75,50 +86,50 @@ double tablet_velocity = 0;
 double under_velocity = 0;
 float break_duty = 0;
 
-// Newton_2km
-/*
-double       a0 =      -0.2778  ;
-double       a1 =       -2.473  ;
-double       b1 =        -1.49  ;
-double       a2 =      -0.7655  ;
-double       b2 =      -0.2943  ;
-double       a3 =      -0.3182  ;
-double       b3 =       0.1401  ;
-double       a4 =      -0.1315  ;
-double       b4 =      -0.1185  ;
-double       w =        0.0349  ;
-*/
-// Newton_2km_interploation
-double       a0 =      -0.3817  ;
-double       a1 =       -2.984  ;
-double       b1 =        -1.11  ;
-double       a2 =      -0.9136  ;
-double       b2 =      -0.2005  ;
-double       a3 =      -0.3515  ;
-double       b3 =       0.2333  ;
-double       a4 =      -0.1837  ;
-double       b4 =      -0.1303  ;
-double       w =        0.0349  ;
+// Newton_1km
+double a0_1 = -0.08009;
+double a1_1 = -0.7486;
+double b1_1 = -2.089;
+double a2_1 = -0.2192;
+double b2_1 = -0.2818;
+double a3_1 = -0.03954;
+double b3_1 = 0.02539;
+double a4_1 = -0.03543;
+double b4_1 = -0.02386;
+double w_1 = 0.0349;
+
+// Newton_3km
+double a0_3 = -0.6832;
+double a1_3 = -5.218;
+double b1_3 = -0.1314;
+double a2_3 = -1.608;
+double b2_3 = -0.1195;
+double a3_3 = -0.6634;
+double b3_3 = 0.441;
+double a4_3 = -0.3319;
+double b4_3 = -0.2368;
+double w_3 = 0.0349;
 
 // Encoder_deg_time
-double       ae0 =       178.8  ;
-double       ae1 =      -127.6  ;
-double       be1 =      -95.55  ;
-double       ae2 =      -65.83  ;
-double       be2 =        18.9  ;
-double       ae3 =      -6.494  ;
-double       be3 =        33.9  ;
-double       ae4 =       9.825  ;
-double       be4 =       15.11  ;
-double       ae5 =       8.628  ;
-double       be5 =       0.712  ;
-double       ae6 =       3.074  ;
-double       be6 =      -2.617  ;
-double       ae7 =     -0.0374  ;
-double       be7 =      -1.438  ;
-double       ae8 =      -0.327  ;
-double       be8 =     -0.3416  ;
-double       we =       2.0048  ;
+double ae0 = 178.8;
+double ae1 = -127.6;
+double be1 = -95.55;
+double ae2 = -65.83;
+double be2 = 18.9;
+double ae3 = -6.494;
+double be3 = 33.9;
+double ae4 = 9.825;
+double be4 = 15.11;
+double ae5 = 8.628;
+double be5 = 0.712;
+double ae6 = 3.074;
+double be6 = -2.617;
+double ae7 = -0.0374;
+double be7 = -1.438;
+double ae8 = -0.327;
+double be8 = -0.3416;
+double we = 0;
+double       w_base =   2.0048  ; // 2km/h
 
 // 통신 변수 선언.
 Uint16 TimerCount = 0, MotorCount = 0, TimerCount_2 = 0;
