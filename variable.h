@@ -17,9 +17,10 @@ Uint16 i = 0, M_i = 0, E_i = 0, D_i = 0;
 int a = 0;
 int Flash_bit=0;
 int flag = 0;
+int flag2 = 0;
 int Enable_bit = 0;
-int gain_bit = 0;
-long torque = 0;
+int gain_bit = 1;
+long long torque = 0;
 //double torque_offset = 5.5; // 마찰력 보상(200310)
 double torque_scale = 4.3;
 double max_motor_torque = 0.75;
@@ -28,6 +29,8 @@ double torque_fourier_1 = 0;	// 1km/h fourier
 double torque_fourier_3 = 0;	// 3km/h fourier
 double torque_interpolation = 0;
 double torque_buffer = 0;
+double mass_torque = 0;
+int mass = 0;
 int stuff_position = 0;
 int stuff_position2 = 0;
 int buff_i = 0;
@@ -43,11 +46,15 @@ Uint32 time_Encoder_revcnt = 0;
 double E_vel_deg_time = 0;
 double Position_error = 0;
 double integrator = 0;
-double Kp = 0.31;
-double Kd = 0.21;
+double Kp = 0.32;
+double Kd = 0.265;
 double Ki = 0;
+double Kp_term = 0;
+double Kd_term = 0;
 
 double target_gain = 0;
+double current_gain = 1;
+double gain_step = 0.1;
 
 extern Uint16 RamfuncsLoadStart;
 extern Uint16 RamfuncsLoadEnd;
@@ -85,6 +92,28 @@ double R_velocity = 0;
 double tablet_velocity = 0;
 double under_velocity = 0;
 float break_duty = 0;
+
+/*
+// Mass Torque
+double a0 = 10.47;
+double a1 = -0.0008972;
+double b1 = -0.002227;
+double a2 = 0.8443;
+double b2 = -0.4911;
+double a3 = 0.00004001;
+double b3 = -0.0001289;
+double w = 0.01745;
+*/
+
+// Mass Torque 15%
+double a0 = 16.11;
+double a1 = -0.001346;
+double b1 = -0.003342;
+double a2 = 1.266;
+double b2 = -0.7366;
+double a3 = 0.00006002;
+double b3 = -0.0001934;
+double w = 0.01745;
 
 // Newton_1km
 double a0_1 = -0.08009;
@@ -129,10 +158,10 @@ double be7 = -1.438;
 double ae8 = -0.327;
 double be8 = -0.3416;
 double we = 0;
-double       w_base =   2.0048  ; // 2km/h
+double w_base =   2.0048  ; // 2km/h
 
 // 통신 변수 선언.
-Uint16 TimerCount = 0, MotorCount = 0, TimerCount_2 = 0;
+Uint16 TimerCount = 0, TimerCount1 = 0, TimerCount2 = 0, MotorCount = 0, TimerCount_2 = 0;
 
 float32 usec_delay=100000;
 
