@@ -294,7 +294,7 @@ void MetabolizeRehabilitationRobot() {
 	++TimerCount; //40 -> 2
 	++TimerCount1; //40 -> 2
 
-	if(TimerCount1 == 2)
+	if(TimerCount1 == 1)
 	{
 		TimerCount1 = 0;
 		Encoder_define();
@@ -365,7 +365,7 @@ void Moving_avg_degree()
 		D_i=19;
 	}
 
-	Encoder_vel = (ED_mva - ED_mva_old) * 100; // 각속도 계산
+	Encoder_vel = (ED_mva - ED_mva_old) * 200; // 각속도 계산
 
 	if (E_i < 19)
 	{
@@ -386,7 +386,7 @@ void Moving_avg_degree()
 		E_i=19;
 	}
 
-	Encoder_acc = (EV_mva - EV_mva_old) * 100;
+	Encoder_acc = (EV_mva - EV_mva_old) * 200;
 
 	if (Encoder_deg_old - Encoder_deg_new >= 250)
 	{
@@ -456,7 +456,7 @@ void BT_transmit() {
 
 void Uart_transmit() {
 //	sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * torque), (long) (10000 * torque_interpolation), (long) (10000 * torque_buffer), (long) (10000 * Position_error), (long) (10000 * Encoder_deg_time), (long) (10000 * Encoder_deg_new), (long) (10000 * time_Encoder_revcnt), (long) (10000 * Encoder_revcnt), (long) (10000 * Kp), (long) (10000 * velocity));
-	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %d\n\0", (long long) (10000 * torque), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long) (10000 * Position_error), (long long) (10000 * Encoder_deg_time), (long long) (10000 * Encoder_deg_new), (long long) (10000 * Encoder_vel), (long long) (10000 * Kp_term), (long long) (10000 * Kd_term), (long long) (10000 * velocity), (long long) (10000 * current_gain), (long long) (10000 * tablet_velocity), V_i);
+	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %d\n\0", (long long) (10000 * torque), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long) (10000 * Position_error), (long long) (10000 * Encoder_deg_time), (long long) (10000 * Encoder_deg_new), (long long) (10000 * Encoder_vel), (long long) (10000 * Kp_term), (long long) (10000 * Kd_term), (long long) (100 * velocity), (long long) (10000 * current_gain), (long long) (10000 * tablet_velocity), V_i);
 //	sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * E_vel_deg_new), (long) (10000 * ED_mva), (long) (10000 * Encoder_vel), (long) (10000 * EV_mva), (long) (10000 * Encoder_acc), (long) (10000 * R_velocity), (long) (10000 * tablet_velocity), (long) (V_i), (long) (10000 * Encoder_deg_new));
 	UART_Put_String(UT);
 }
@@ -806,6 +806,23 @@ void Timer_set() {
 
 	DegTimer = DegTimer + 0.005;
 
+	Encoder_deg_time = ae0 + ae1 * cos(DegTimer * we)
+	+ be1 * sin(DegTimer * we)
+	+ ae2 * cos(2 * DegTimer * we)
+	+ be2 * sin(2 * DegTimer * we)
+	+ ae3 * cos(3 * DegTimer * we)
+	+ be3 * sin(3 * DegTimer * we)
+	+ ae4 * cos(4 * DegTimer * we)
+	+ be4 * sin(4 * DegTimer * we)
+	+ ae5 * cos(5 * DegTimer * we)
+	+ be5 * sin(5 * DegTimer * we)
+	+ ae6 * cos(6 * DegTimer * we)
+	+ be6 * sin(6 * DegTimer * we)
+	+ ae7 * cos(7 * DegTimer * we)
+	+ be7 * sin(7 * DegTimer * we)
+	+ ae8 * cos(8 * DegTimer * we)
+	+ be8 * sin(8 * DegTimer * we);
+
 	if(DegTimer >= SetDegTimer)
 	{
 		DegTimer = 0;
@@ -872,22 +889,6 @@ void TrainAbnormalPerson() {
 			mass_torque = 0;
 		}
 
-		Encoder_deg_time = ae0 + ae1 * cos(DegTimer * we)
-		+ be1 * sin(DegTimer * we)
-		+ ae2 * cos(2 * DegTimer * we)
-		+ be2 * sin(2 * DegTimer * we)
-		+ ae3 * cos(3 * DegTimer * we)
-		+ be3 * sin(3 * DegTimer * we)
-		+ ae4 * cos(4 * DegTimer * we)
-		+ be4 * sin(4 * DegTimer * we)
-		+ ae5 * cos(5 * DegTimer * we)
-		+ be5 * sin(5 * DegTimer * we)
-		+ ae6 * cos(6 * DegTimer * we)
-		+ be6 * sin(6 * DegTimer * we)
-		+ ae7 * cos(7 * DegTimer * we)
-		+ be7 * sin(7 * DegTimer * we)
-		+ ae8 * cos(8 * DegTimer * we)
-		+ be8 * sin(8 * DegTimer * we);
 
 		Position_error = E_vel_deg_time - E_vel_deg_new;
 //		if(time_Encoder_revcnt > Encoder_revcnt) Position_error = Position_error + 360;
@@ -916,6 +917,60 @@ void TrainAbnormalPerson() {
 		break;
 	case 2:
 
+		break_duty = 1;
+
+		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
+			+ b1_1 * sin(Encoder_deg_new * w_1)
+			+ a2_1 * cos(2 * Encoder_deg_new * w_1)
+			+ b2_1 * sin(2 * Encoder_deg_new * w_1)
+			+ a3_1 * cos(3 * Encoder_deg_new * w_1)
+			+ b3_1 * sin(3 * Encoder_deg_new * w_1)
+			+ a4_1 * cos(4 * Encoder_deg_new * w_1)
+			+ b4_1 * sin(4 * Encoder_deg_new * w_1);
+		torque_fourier_3 = a0_3 + a1_3 * cos(Encoder_deg_new * w_3)
+			+ b1_3 * sin(Encoder_deg_new * w_3)
+			+ a2_3 * cos(2 * Encoder_deg_new * w_3)
+			+ b2_3 * sin(2 * Encoder_deg_new * w_3)
+			+ a3_3 * cos(3 * Encoder_deg_new * w_3)
+			+ b3_3 * sin(3 * Encoder_deg_new * w_3)
+			+ a4_3 * cos(4 * Encoder_deg_new * w_3)
+			+ b4_3 * sin(4 * Encoder_deg_new * w_3);
+		if(target_gain >= 1)	torque_interpolation = ((3-target_gain)/2) * torque_fourier_1 + ((target_gain-1)/2) * torque_fourier_3;
+		else if(target_gain < 1) torque_interpolation = target_gain * torque_fourier_1;
+
+		mass_torque = a0 + a1 * cos(Encoder_deg_new * w)  // 최대 200kg;
+		+ b1 * sin(Encoder_deg_new * w)
+		+ a2 * cos(2 * Encoder_deg_new * w)
+		+ b2 * sin(2 * Encoder_deg_new * w)
+		+ a3 * cos(3 * Encoder_deg_new * w)
+		+ b3 * sin(3 * Encoder_deg_new * w);
+		mass_torque = (double)mass *0.005 * mass_torque;
+
+		if(flag == 1)
+		{
+			torque_interpolation = 0; // Test
+			mass_torque = 0;
+		}
+
+//		torque_buffer = (torque_interpolation + mass_torque) * torque_scale + Kp * Position_error - Kd * Encoder_vel; // + integrator;
+
+		torque = torque_buffer * 1000;
+		if(torque <= 0)
+			torque = 0;
+		if(torque >= 45000)
+		{
+			torque = 44900;
+			flag2++;
+		}
+
+		torque = torque / gear_ratio; // 감속비 60
+		torque = (torque / max_motor_torque);	// 모터 정격 토크 = 0.75
+		Torque_Calculate();
+//		MAXON_transmit();
+
+		break;
+	case 3:
+
 		torque = 0;
 		DegTimer = 0;
 		Encoder_revcnt = 0;
@@ -929,9 +984,6 @@ void TrainAbnormalPerson() {
 		else break_duty = 1;
 		Torque_Calculate();
 		MAXON_transmit();
-
-		break;
-	case 3:
 
 		break;
 	}

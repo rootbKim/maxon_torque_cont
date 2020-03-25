@@ -115,6 +115,7 @@ double a3 = 0.00006002;
 double b3 = -0.0001934;
 double w = 0.01745;
 
+
 // Newton_1km
 double a0_1 = -0.08009;
 double a1_1 = -0.7486;
