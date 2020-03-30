@@ -69,6 +69,7 @@ int Enable_num = 1;
 
 Uint32 Encoder[10], Encoder_sum = 0, Encoder_cnt = 0;
 double Encoder_deg_new = 0;
+double degree_offset = 2;
 double Encoder_deg_old = 0;
 double Encoder_deg = 0;
 Uint32 Encoder_revcnt = 0;
@@ -104,7 +105,7 @@ double a3 = 0.00004001;
 double b3 = -0.0001289;
 double w = 0.01745;
 */
-
+/*
 // Mass Torque 15%
 double a0 = 16.11;
 double a1 = -0.001346;
@@ -114,7 +115,17 @@ double b2 = -0.7366;
 double a3 = 0.00006002;
 double b3 = -0.0001934;
 double w = 0.01745;
+*/
 
+// Mass Torque 100%
+double a0 = 107.4;
+double a1 = -0.008972;
+double b1 = -0.02227;
+double a2 = 8.443;
+double b2 = -4.911;
+double a3 = 0.0004001;
+double b3 = -0.001289;
+double w = 0.01745;
 
 // Newton_1km
 double a0_1 = -0.08009;
