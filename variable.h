@@ -15,10 +15,11 @@ float32 Timer_Prd;
 Uint16 i = 0, M_i = 0, E_i = 0, D_i = 0;
 
 int a = 0;
+int b = 0;
+
 int Flash_bit=0;
 int flag = 0;
 int flag2 = 0;
-int Enable_bit = 0;
 int gain_bit = 1;
 int ratio_bit = 0;
 long long torque = 0;
@@ -50,12 +51,10 @@ double E_vel_deg_time = 0;
 double Position_error = 0;
 double Vel_error = 0;
 double Acc_error = 0;
-double integrator = 0;
-double Kp = 0.32;
-double Kd = 0.265;
-double Kv = 0;
-double Ka = 0;
-double Ki = 0;
+double Kp = 1.5;
+double Kd = 0.075;
+double Kv = 0.03;
+double Ka = 0.01;
 double Kp_term = 0;
 double Kd_term = 0;
 
@@ -72,6 +71,7 @@ extern Uint16 RamfuncsRunStart;
 char RxBuff[16];
 char RxBuff2[30];
 char Receivedbuff;
+char Receivedbuff2;
 int len=0;
 int protocol_len=14;
 int Enable_num = 1;
@@ -102,6 +102,19 @@ double R_velocity = 0;
 double tablet_velocity = 0;
 double under_velocity = 0;
 float break_duty = 0;
+unsigned int break_num = 0;
+unsigned int break_bit1 = 0;
+unsigned int break_bit2 = 0;
+
+unsigned int Type_sel = 0;
+unsigned int pause_bit = 0;
+int init_bit = 0;
+int Play_the_game = 0;
+double training_timer = 0;
+unsigned int time_now = 0;
+double target_dis = 0;
+int pause_finish = 0;
+double target_time = 0;
 
 // Mass Torque 100%
 double a0 = 107.4;
@@ -185,6 +198,31 @@ double wa = 0.0349;
 // 통신 변수 선언.
 Uint16 TimerCount = 0, TimerCount1 = 0, TimerCount2 = 0, MotorCount = 0, TimerCount_2 = 0;
 
-float32 usec_delay=100000;
+int slow_start_timer = 0;
+unsigned int leg_num = 0;
+unsigned int start_bit = 0;
+unsigned int end_bit = 0;
+
+unsigned int move_distance_1000 = 0;
+unsigned int move_distance_100 = 0;
+unsigned int move_distance_10 = 0;
+unsigned int move_distance_1 = 0;
+
+unsigned int time_now_min_10 = 0;
+unsigned int time_now_min_1 = 0;
+unsigned int time_now_sec_10 = 0;
+unsigned int time_now_sec_1 = 0;
+
+unsigned int Train_num = 0;
+unsigned int Train_target = 0;
+
+unsigned int break_timer = 0;
+unsigned int break_time_now = 0;
+
+unsigned int break_time_100 = 0;
+unsigned int break_time_10 = 0;
+unsigned int break_time_1 = 0;
+
+float32 usec_delay = 100000;
 
 #endif /* VARIABLE_H_ */
