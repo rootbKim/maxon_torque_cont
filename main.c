@@ -8,8 +8,6 @@
 #pragma CODE_SECTION(Uart_transmit,"ramfuncs")
 #pragma CODE_SECTION(UART_Put_String,"ramfuncs")
 #pragma CODE_SECTION(BT_transmit,"ramfuncs")
-//#pragma CODE_SECTION(MAXON_transmit,"ramfuncs")
-//#pragma CODE_SECTION(MAXON_Put_String,"ramfuncs")
 #pragma CODE_SECTION(TrainAbnormalPerson,"ramfuncs")
 
 // CPU timer0 선언 //
@@ -37,8 +35,6 @@ void BT_transmit();
 void BT_Put_String(char *BT_string);
 void Uart_transmit();
 void UART_Put_String(char *Uart_string);
-//void MAXON_transmit();
-//void MAXON_Put_String(char *MAXON_string);
 
 void Motor_Enable();
 unsigned short* decimal2hex(long torque);
@@ -313,10 +309,6 @@ void MetabolizeRehabilitationRobot() {
 	// MATLAB 2 -> 200Hz 40 -> 5Hz
 	if (TimerCount == 200) {
 		TimerCount = 0;
-//		if(mode_num == 1)
-//		{
-//			Uart_transmit();
-//		}
 		Flash_bit=!Flash_bit;
 		GpioDataRegs.GPBDAT.bit.GPIO48 = Flash_bit;
 	}
@@ -346,9 +338,9 @@ void Encoder_value_calculation()
 	Encoder_deg_new = 360 - (double) Encoder_sum * 0.3515625; // Encoder값 갱신. 1024 Pulse를 0 - 360 deg로 바꿔줌.
 	Encoder_deg_new = Encoder_deg_new - degree_offset;
 	if(Encoder_deg_new < 0) Encoder_deg_new = Encoder_deg_new + 360;
-	if (Encoder_deg_old - Encoder_deg_new >= 250 && mode_num == 1) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
+	if (Encoder_deg_old - Encoder_deg_new >= 250 && (mode_num == 1 || mode_num == 2)) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
 		Encoder_revcnt++; // 회전수 체크
-	if (Encoder_deg_old - Encoder_deg_new <= -250 && mode_num == 1)
+	if (Encoder_deg_old - Encoder_deg_new <= -250 && (mode_num == 1 || mode_num == 2))
 		Encoder_revcnt--;
 
 	E_vel_deg_new = Encoder_revcnt * 360 + Encoder_deg_new;
@@ -432,7 +424,7 @@ void Encoder_define() {
 	// Encoder Digital Input 값 받기
 	Encoder_position_renew();
 	Encoder_value_calculation();
-	if(mode_num == 1)	Moving_avg_degree();
+	if(mode_num == 1 || mode_num == 2)	Moving_avg_degree();
 	//각속도-->보행속도
 		velocity = R_velocity * 0.0119;
 		under_velocity = velocity * 10 - ((int) velocity) * 10;
@@ -453,15 +445,6 @@ void UART_Put_String(char *Uart_string) {
 		}
 	}
 }
-/*
-// 포로토콜 전송
-void MAXON_Put_String(char *MAXON_string) {
-   for(len = 0; len<protocol_len; len++) {
-      ScicRegs.SCITXBUF = *MAXON_string++;
-      while (ScicRegs.SCIFFTX.bit.TXFFST != 0) {
-      }
-   }
-}*/
 
 interrupt void scicTxFifoIsr(void) {
 	   for(len = 0; len<protocol_len; len++)
@@ -474,11 +457,7 @@ interrupt void scicTxFifoIsr(void) {
 	   PieCtrlRegs.PIEACK.all = PIEACK_GROUP8;
 
 }
-/*
-void MAXON_transmit() {
-   MAXON_Put_String(uart);
-}
-*/
+
 void BT_transmit() {
 /*	sprintf(BT, "!s%d.%dt%d%d%d%dd%d%d%d%d?\n\0",
 			(int) velocity, (int) under_velocity,
@@ -490,7 +469,8 @@ void BT_transmit() {
 
 void Uart_transmit() {
 //	sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * torque), (long) (10000 * torque_interpolation), (long) (10000 * torque_buffer), (long) (10000 * Position_error), (long) (10000 * Encoder_deg_time), (long) (10000 * Encoder_deg_new), (long) (10000 * time_Encoder_revcnt), (long) (10000 * Encoder_revcnt), (long) (10000 * Kp), (long) (10000 * velocity));
-	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %d, %d\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long) (10000 * Position_error), (long long) (10000 * Encoder_deg_time), (long long) (10000 * Encoder_deg_new), (long long) (10000 * Encoder_vel), (long long) (10000 * Kp_term), (long long) (10000 * Kd_term), (long long) (100 * velocity), (long long) (10000 * current_gain), (long long) (10000 * tablet_velocity), V_i, flag);
+//	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %d, %d\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long) (10000 * Position_error), (long long) (10000 * Encoder_deg_time), (long long) (10000 * Encoder_deg_new), (long long) (10000 * Encoder_vel), (long long) (10000 * Kp_term), (long long) (10000 * Kd_term), (long long) (100 * velocity), (long long) (10000 * current_gain), (long long) (10000 * tablet_velocity), V_i, flag);
+	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long) (10000 * Encoder_deg_new), (long long) (10000 * Encoder_vel_deg), (long long) (10000 * Encoder_vel), (long long) (10000 * Encoder_acc_deg), (long long) (10000 * Encoder_acc), (long long) (10000 * Vel_error), (long long) (10000 * Acc_error), (long long) (100 * velocity), (long long) (10000 * current_gain), (long long) (10000 * ratio_gain));
 //	sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * E_vel_deg_new), (long) (10000 * ED_mva), (long) (10000 * Encoder_vel), (long) (10000 * EV_mva), (long) (10000 * Encoder_acc), (long) (10000 * R_velocity), (long) (10000 * tablet_velocity), (long) (V_i), (long) (10000 * Encoder_deg_new));
 	UART_Put_String(UT);
 }
@@ -597,8 +577,6 @@ void Motor_Enable()
 {
 		switch(Enable_num){
 		case 1:
-//			sprintf(uart, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x68, 0x04, 0x01, 0x40, 0x60, 0x00, 0x06, 0x00, 0x00, 0x00, 0x22, 0x99);
-//			MAXON_transmit();
 			uart[0] = 0x90;
 			uart[1] = 0x02;
 			uart[2] = 0x68;
@@ -617,8 +595,6 @@ void Motor_Enable()
 			ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 			break;
 		case 2:
-//			sprintf(uart, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x68, 0x04, 0x01, 0x40, 0x60, 0x00, 0x0f, 0x00, 0x00, 0x00, 0xb3, 0x07);
-//			MAXON_transmit();
 			uart[0] = 0x90;
 			uart[1] = 0x02;
 			uart[2] = 0x68;
@@ -637,71 +613,6 @@ void Motor_Enable()
 			Enable_bit = 0;
 			ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 			break;
-/*		case 3:
-//			sprintf(uart, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x00, 0x51, 0x80);
-//			MAXON_transmit();
-			uart[0] = 0x90;
-			uart[1] = 0x02;
-			uart[2] = 0x60;
-			uart[3] = 0x02;
-			uart[4] = 0x01;
-			uart[5] = 0x51;
-			uart[6] = 0x31;
-			uart[7] = 0x00;
-			uart[8] = 0x51;
-			uart[9] = 0x80;
-			Enable_num = 4;
-			ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-			break;
-		case 4:
-//			sprintf(uart, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x01, 0x60, 0xb3);
-//			MAXON_transmit();
-			uart[0] = 0x90;
-			uart[1] = 0x02;
-			uart[2] = 0x60;
-			uart[3] = 0x02;
-			uart[4] = 0x01;
-			uart[5] = 0x51;
-			uart[6] = 0x31;
-			uart[7] = 0x01;
-			uart[8] = 0x60;
-			uart[9] = 0xb3;
-			Enable_num = 5;
-			ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-			break;
-		case 5:
-//			sprintf(uart, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x02, 0x33, 0xe6);
-//			MAXON_transmit();
-			uart[0] = 0x90;
-			uart[1] = 0x02;
-			uart[2] = 0x60;
-			uart[3] = 0x02;
-			uart[4] = 0x01;
-			uart[5] = 0x51;
-			uart[6] = 0x31;
-			uart[7] = 0x02;
-			uart[8] = 0x33;
-			uart[9] = 0xe6;
-			Enable_num = 6;
-			ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-			break;
-		case 6:
-//			sprintf(uart, "%c%c%c%c%c%c%c%c%c%c", 0x90, 0x02, 0x60, 0x02, 0x01, 0x51, 0x31, 0x03, 0x02, 0xd5);
-//			MAXON_transmit();
-			uart[0] = 0x90;
-			uart[1] = 0x02;
-			uart[2] = 0x60;
-			uart[3] = 0x02;
-			uart[4] = 0x01;
-			uart[5] = 0x51;
-			uart[6] = 0x31;
-			uart[7] = 0x03;
-			uart[8] = 0x02;
-			uart[9] = 0xd5;
-			Enable_num = 0;
-			Enable_bit = 0;
-			ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-			break;*/
 	}
 }
 
@@ -992,15 +903,7 @@ void TrainAbnormalPerson() {
 		+ b3 * sin(3 * Encoder_deg_new * w);
 		mass_torque = (double)mass *0.005 * mass_torque;
 
-
-
 		Position_error = E_vel_deg_time - E_vel_deg_new;
-//		if(time_Encoder_revcnt > Encoder_revcnt) Position_error = Position_error + 360;
-//		else if(time_Encoder_revcnt < Encoder_revcnt) Position_error = Position_error - 360;
-
-//		integrator += Ki * Position_error * 0.005;
-//		if(integrator >= 10)	integrator = 10;
-//		else if(integrator <= -10)	integrator = -10;
 		torque_buffer = torque_interpolation * torque_scale + mass_torque*0.5 + Kp * Position_error - Kd * Encoder_vel; // + integrator;
 		Kp_term = Kp*Position_error;
 		Kd_term = Kd*Encoder_vel;
@@ -1016,7 +919,6 @@ void TrainAbnormalPerson() {
 		torque = torque / gear_ratio; // 감속비 60
 		torque = (torque / max_motor_torque);	// 모터 정격 토크 = 0.75
 		Torque_Calculate();
-//		MAXON_transmit();
 		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 
 		break;
@@ -1040,6 +942,28 @@ void TrainAbnormalPerson() {
 			+ b3_3 * sin(3 * Encoder_deg_new * w_3)
 			+ a4_3 * cos(4 * Encoder_deg_new * w_3)
 			+ b4_3 * sin(4 * Encoder_deg_new * w_3);
+
+		Encoder_vel_deg = av0 + av1 * cos(Encoder_deg_new * wv)
+			+ bv1 * sin(Encoder_deg_new * wv)
+			+ av2 * cos(2 * Encoder_deg_new * wv)
+			+ bv2 * sin(2 * Encoder_deg_new * wv)
+			+ av3 * cos(3 * Encoder_deg_new * wv)
+			+ bv3 * sin(3 * Encoder_deg_new * wv)
+			+ av4 * cos(4 * Encoder_deg_new * wv)
+			+ bv4 * sin(4 * Encoder_deg_new * wv);
+
+		Encoder_acc_deg = aa0 + aa1 * cos(Encoder_deg_new * wa)
+		+ ba1 * sin(Encoder_deg_new * wa)
+		+ aa2 * cos(2 * Encoder_deg_new * wa)
+		+ ba2 * sin(2 * Encoder_deg_new * wa)
+		+ aa3 * cos(3 * Encoder_deg_new * wa)
+		+ ba3 * sin(3 * Encoder_deg_new * wa)
+		+ aa4 * cos(4 * Encoder_deg_new * wa)
+		+ ba4 * sin(4 * Encoder_deg_new * wa);
+
+		Encoder_vel_deg = Encoder_vel_deg * target_gain;
+		Encoder_acc_deg = Encoder_acc_deg * target_gain  * target_gain;
+
 		if(target_gain >= 1)	torque_interpolation = ((3-target_gain)/2) * torque_fourier_1 + ((target_gain-1)/2) * torque_fourier_3;
 		else if(target_gain < 1) torque_interpolation = target_gain * torque_fourier_1;
 
@@ -1051,7 +975,13 @@ void TrainAbnormalPerson() {
 		+ b3 * sin(3 * Encoder_deg_new * w);
 		mass_torque = (double)mass *0.005 * mass_torque;
 
-//		torque_buffer = (torque_interpolation + mass_torque) * torque_scale + Kp * Position_error - Kd * Encoder_vel; // + integrator;
+		Vel_error = Encoder_vel - Encoder_vel_deg;
+		Acc_error = Encoder_acc - Encoder_acc_deg;
+
+		if(Vel_error <= 0) Vel_error = 0;
+		if(Acc_error <= 0) Acc_error = 0;
+
+		torque_buffer = torque_interpolation * torque_scale + mass_torque * 0.5 * ratio_gain + Kv * Vel_error + Ka * Acc_error;
 
 		torque = torque_buffer * 1000;
 		if(torque <= 0)
@@ -1065,7 +995,6 @@ void TrainAbnormalPerson() {
 		torque = torque / gear_ratio; // 감속비 60
 		torque = (torque / max_motor_torque);	// 모터 정격 토크 = 0.75
 		Torque_Calculate();
-//		MAXON_transmit();
 		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 
 		break;
@@ -1091,21 +1020,28 @@ void TrainAbnormalPerson() {
 }
 
 // timer 인터럽트
-interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 200Hz
+interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 1000Hz
 {
 	MetabolizeRehabilitationRobot();
 
 	if(Enable_bit)	Motor_Enable();
 	if(gain_bit)	torque_fourier_constant(current_gain);
+	if(ratio_bit)
+	{
+		target_gain = target_gain * ratio_gain;
+		target_gain = (int)(target_gain * 10);
+		target_gain = target_gain / 10;
+		ratio_bit = 0;
+		gain_bit = 1;
+	}
 
 	TrainAbnormalPerson();
 	OutputPWM();
 
-
 	TimerCount2++;
 	if (TimerCount2 == 200) {
 		TimerCount2 = 0;
-		if(mode_num == 1)
+		if(mode_num == 2)
 		{
 			Uart_transmit();
 		}
