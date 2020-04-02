@@ -196,11 +196,12 @@ int Robot_Initialize() {
 			break_duty = 0.8;	//브레이크 OFF
 //			Motor_Pwm = 0.1;	//모터 최저속도
 
-			if (Encoder_deg_new >= 200 && Encoder_deg_new <= 205) {
+			if (Encoder_deg_new >= 50 && Encoder_deg_new <= 55) {
 				break_duty = 0;
 //				Motor_Pwm = 0;
 				velocity = 0;
 				init_bit = 1;
+				if(pause_finish == 0)	Play_the_game = 0;
 				if (pause_finish == 0 && pause_bit)
 					pause_finish = 1;
 				return 1;
@@ -215,11 +216,12 @@ int Robot_Initialize() {
 		if (!init_bit) {
 			break_duty = 0.8;
 //			Motor_Pwm = 0.1;
-			if (Encoder_deg_new >= 20 && Encoder_deg_new <= 25) {
+			if (Encoder_deg_new >= 230 && Encoder_deg_new <= 235) {
 				break_duty = 0;
 //				Motor_Pwm = 0;
 				velocity = 0;
 				init_bit = 1;
+				if(pause_finish == 0)	Play_the_game = 0;
 				if (pause_finish == 0 && pause_bit)
 					pause_finish = 1;
 				return 1;
@@ -279,6 +281,7 @@ void clear_variable() {
 	DegTimer = 0;
 	Encoder_vel_deg = 0;
 	Encoder_acc_deg = 0;
+	Encoder_deg_time = 0;
 	time_Encoder_revcnt = 0;
 	Encoder_vel = 0;
 	Encoder_acc = 0;
@@ -871,7 +874,7 @@ void MetabolizeRehabilitationRobot() {
 		GpioDataRegs.GPBDAT.bit.GPIO48 = Flash_bit;
 		if (start_bit && (!end_bit))
 			if (Play_the_game) {
-				Uart_transmit();
+				BT_transmit();
 			}
 	}
 }
@@ -1207,7 +1210,7 @@ int IsPause() {
 void IncreaseTime() {
 	++training_timer;
 	// 훈련시간 확인 알려주는것
-	if (training_timer == 200) {
+	if (training_timer == 1000) {
 		training_timer = 0;
 		++time_now;
 	}
@@ -1218,8 +1221,8 @@ void TrainAbnormalPerson() {
 	switch (mode_num) {
 	case 1:
 		break_duty = 1;
-
-		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
+		flag2 = 5;
+/*		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
 			+ b1_1 * sin(Encoder_deg_new * w_1)
 			+ a2_1 * cos(2 * Encoder_deg_new * w_1)
 			+ b2_1 * sin(2 * Encoder_deg_new * w_1)
@@ -1263,13 +1266,13 @@ void TrainAbnormalPerson() {
 		torque = (torque / max_motor_torque);	// 모터 정격 토크 = 0.75
 		Torque_Calculate();
 		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-
+*/
 		break;
 
 	case 2:
-
+		flag2 = 2;
 		break_duty = 1;
-
+/*
 		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
 			+ b1_1 * sin(Encoder_deg_new * w_1)
 			+ a2_1 * cos(2 * Encoder_deg_new * w_1)
@@ -1340,7 +1343,7 @@ void TrainAbnormalPerson() {
 		torque = (torque / max_motor_torque);	// 모터 정격 토크 = 0.75
 		Torque_Calculate();
 		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-
+*/
 		break;
 
 	case 3:
@@ -1429,7 +1432,7 @@ int Type_Check_fun() {
 void break_time() {
 	++break_timer;
 	// 휴식시간 확인 알려주는것
-	if (break_timer == 200) {
+	if (break_timer == 1000) {
 		break_timer = 0;
 		++break_time_now;
 	}
@@ -1447,13 +1450,13 @@ void break_time() {
 }
 
 int Start_breaking() {
-	if ((slow_start_timer < 1000) && (start_bit == 1))   //200hz 5ms
+	if ((slow_start_timer < 5000) && (start_bit == 1))   //200hz 5ms
 	{
 		++slow_start_timer;
 		return 0;
 	}
-	else if (slow_start_timer >= 1000) {
-		slow_start_timer = 1001;
+	else if (slow_start_timer >= 5000) {
+		slow_start_timer = 5001;
 		Play_the_game = 1;
 		return 1;
 	}
