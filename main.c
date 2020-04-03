@@ -16,6 +16,7 @@
 interrupt void cpu_timer0_isr(void);
 
 //------------------함수------------------//
+void Initialize_motor(int init_bit);
 int Robot_Initialize();
 void clear_variable();
 void MetabolizeRehabilitationRobot();
@@ -39,6 +40,7 @@ void Motor_Enable();
 unsigned short* decimal2hex(long torque);
 unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLength);
 void torque_fourier_constant(double target_gain);
+void Torque_Calculate();
 void Timer_set();
 
 //------------------함수------------------//
@@ -184,6 +186,68 @@ void Reg_setting_fun() {
 	EDIS;
 }
 
+void Initialize_motor(int init_bit)
+{
+	if(init_bit == 0)
+	{
+		DegTimer = (Encoder_deg_new / 360) * 4.284;
+		Timer_set();
+		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
+			+ b1_1 * sin(Encoder_deg_new * w_1)
+			+ a2_1 * cos(2 * Encoder_deg_new * w_1)
+			+ b2_1 * sin(2 * Encoder_deg_new * w_1)
+			+ a3_1 * cos(3 * Encoder_deg_new * w_1)
+			+ b3_1 * sin(3 * Encoder_deg_new * w_1)
+			+ a4_1 * cos(4 * Encoder_deg_new * w_1)
+			+ b4_1 * sin(4 * Encoder_deg_new * w_1);
+
+		torque_interpolation = torque_fourier_1;
+
+		Position_error = E_vel_deg_time - E_vel_deg_new;
+		torque_buffer = torque_interpolation * torque_scale + Kp * Position_error - Kd * Encoder_vel;
+		Kp_term = Kp * Position_error;
+		Kd_term = Kd * Encoder_vel;
+		torque = torque_buffer * 1000;
+		if (torque <= 0)
+			torque = 0;
+		if (torque >= 45000)
+		{
+			torque = 44900;
+				flag2++;
+		}
+
+		torque = torque / gear_ratio; // 감속비 60
+		torque = (torque / max_motor_torque);	// 모터 정격 토크 = 0.75
+		Torque_Calculate();
+		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
+
+	}
+	else if(init_bit == 1)
+	{
+		if(leg_num == 1) DegTimer = 0.7798;
+		if(leg_num == 2) DegTimer = 2.8527;
+		torque = 0;
+		torque_interpolation = 0;
+		mass_torque = 0;
+		Position_error = 0;
+		Vel_error = 0;
+		Acc_error = 0;
+		DegTimer = 0;
+		Encoder_vel_deg = 0;
+		Encoder_acc_deg = 0;
+		Encoder_deg_time = 0;
+		E_vel_deg_time = 0;
+		Encoder_revcnt = 0;
+		time_Encoder_revcnt = 0;
+		Encoder_vel = 0;
+		Encoder_acc = 0;
+		current_gain = 1;
+		gain_bit = 1;
+		Torque_Calculate();
+		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
+	}
+}
+
 int Robot_Initialize() {
 	if (break_bit1 == 1 && break_bit2 == 0)
 	{
@@ -193,12 +257,11 @@ int Robot_Initialize() {
 	//환측다리=오른발이면
 	if (leg_num == 1) {
 		if (!init_bit) {
-			break_duty = 0.8;	//브레이크 OFF
-//			Motor_Pwm = 0.1;	//모터 최저속도
+			break_duty = 1;	//브레이크 OFF
+			Initialize_motor(init_bit);
 
 			if (Encoder_deg_new >= 50 && Encoder_deg_new <= 55) {
 				break_duty = 0;
-//				Motor_Pwm = 0;
 				velocity = 0;
 				init_bit = 1;
 				if(pause_finish == 0)	Play_the_game = 0;
@@ -214,8 +277,9 @@ int Robot_Initialize() {
 	//왼발이면
 	else if (leg_num == 2) {
 		if (!init_bit) {
-			break_duty = 0.8;
-//			Motor_Pwm = 0.1;
+			break_duty = 1;
+			Initialize_motor(init_bit);
+
 			if (Encoder_deg_new >= 230 && Encoder_deg_new <= 235) {
 				break_duty = 0;
 //				Motor_Pwm = 0;
@@ -845,7 +909,7 @@ void Encoder_define() {
 	// Encoder Digital Input 값 받기
 	Encoder_position_renew();
 	Encoder_value_calculation();
-	if (mode_num != 0)	Moving_avg_degree();
+	if (Play_the_game)	Moving_avg_degree();
 	//각속도-->보행속도
 	velocity = R_velocity * 0.0119;
 	under_velocity = velocity * 10 - ((int)velocity) * 10;
@@ -1221,7 +1285,6 @@ void TrainAbnormalPerson() {
 	switch (mode_num) {
 	case 1:
 		break_duty = 1;
-		flag2 = 5;
 /*		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
 			+ b1_1 * sin(Encoder_deg_new * w_1)
 			+ a2_1 * cos(2 * Encoder_deg_new * w_1)

@@ -58,7 +58,7 @@ double Ka = 0.01;
 double Kp_term = 0;
 double Kd_term = 0;
 
-double target_gain = 0;
+double target_gain = 1;
 double ratio_target_gain = 0;
 double ratio_gain = 0;
 double current_gain = 1;
