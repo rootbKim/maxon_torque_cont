@@ -16,7 +16,7 @@
 interrupt void cpu_timer0_isr(void);
 
 //------------------함수------------------//
-void Initialize_motor(int init_bit);
+void Initialize_motor(int init_bit, int pause_bit, int end_bit);
 int Robot_Initialize();
 void clear_variable();
 void MetabolizeRehabilitationRobot();
@@ -36,7 +36,8 @@ void Encoder_position_renew();
 void Encoder_value_calculation();
 void break_time();
 
-void Motor_Enable();
+void Motor_Enable1();
+void Motor_Enable2();
 unsigned short* decimal2hex(long torque);
 unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLength);
 void torque_fourier_constant(double target_gain);
@@ -186,11 +187,23 @@ void Reg_setting_fun() {
 	EDIS;
 }
 
-void Initialize_motor(int init_bit)
+void Initialize_motor(int init_bit, int pause_bit, int end_bit)
 {
+	if(pause_bit == 1 || end_bit == 1)
+	{
+		Kp = 1.5;
+		Kd = 0.075;
+	}
+	else if(pause_bit == 0)
+	{
+		Kp = 0.3;
+		Kd = 0.075;
+	}
+	Kp = 0.3;
+	Kd = 0.075;
+
 	if(init_bit == 0)
 	{
-		DegTimer = (Encoder_deg_new / 360) * 4.284;
 		Timer_set();
 		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
 			+ b1_1 * sin(Encoder_deg_new * w_1)
@@ -201,10 +214,11 @@ void Initialize_motor(int init_bit)
 			+ a4_1 * cos(4 * Encoder_deg_new * w_1)
 			+ b4_1 * sin(4 * Encoder_deg_new * w_1);
 
-		torque_interpolation = torque_fourier_1;
+		torque_interpolation = current_gain * torque_fourier_1;
 
 		Position_error = E_vel_deg_time - E_vel_deg_new;
-		torque_buffer = torque_interpolation * torque_scale + Kp * Position_error - Kd * Encoder_vel;
+		torque_buffer = torque_interpolation * torque_scale + Kp * Position_error - Kd * Encoder_vel; // + integrator;
+
 		Kp_term = Kp * Position_error;
 		Kd_term = Kd * Encoder_vel;
 		torque = torque_buffer * 1000;
@@ -226,13 +240,13 @@ void Initialize_motor(int init_bit)
 	{
 		if(leg_num == 1) DegTimer = 0.7798;
 		if(leg_num == 2) DegTimer = 2.8527;
+//		DegTimer = (Encoder_deg_new / 360) * 4.284;
 		torque = 0;
 		torque_interpolation = 0;
 		mass_torque = 0;
 		Position_error = 0;
 		Vel_error = 0;
 		Acc_error = 0;
-		DegTimer = 0;
 		Encoder_vel_deg = 0;
 		Encoder_acc_deg = 0;
 		Encoder_deg_time = 0;
@@ -243,6 +257,8 @@ void Initialize_motor(int init_bit)
 		Encoder_acc = 0;
 		current_gain = 1;
 		gain_bit = 1;
+		Kp = 1.5;
+		Kd = 0.075;
 		Torque_Calculate();
 		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 	}
@@ -258,12 +274,16 @@ int Robot_Initialize() {
 	if (leg_num == 1) {
 		if (!init_bit) {
 			break_duty = 1;	//브레이크 OFF
-			Initialize_motor(init_bit);
+			gain_bit = 1;
+			current_gain = 0.6;
+			Initialize_motor(init_bit, pause_bit, end_bit);
 
-			if (Encoder_deg_new >= 50 && Encoder_deg_new <= 55) {
+			if (Encoder_deg_new >= 45 && Encoder_deg_new <= 55) {
 				break_duty = 0;
 				velocity = 0;
 				init_bit = 1;
+				Initialize_motor(init_bit, pause_bit, end_bit);
+				if(end_bit == 1) clear_variable();
 				if(pause_finish == 0)	Play_the_game = 0;
 				if (pause_finish == 0 && pause_bit)
 					pause_finish = 1;
@@ -278,13 +298,16 @@ int Robot_Initialize() {
 	else if (leg_num == 2) {
 		if (!init_bit) {
 			break_duty = 1;
-			Initialize_motor(init_bit);
+			gain_bit = 1;
+			current_gain = 0.6;
+			Initialize_motor(init_bit, pause_bit, end_bit);
 
-			if (Encoder_deg_new >= 230 && Encoder_deg_new <= 235) {
+			if (Encoder_deg_new >= 225 && Encoder_deg_new <= 235) {
 				break_duty = 0;
-//				Motor_Pwm = 0;
 				velocity = 0;
 				init_bit = 1;
+				Initialize_motor(init_bit, pause_bit, end_bit);
+				if(end_bit == 1) clear_variable();
 				if(pause_finish == 0)	Play_the_game = 0;
 				if (pause_finish == 0 && pause_bit)
 					pause_finish = 1;
@@ -299,7 +322,7 @@ int Robot_Initialize() {
 }
 
 void clear_variable() {
-	leg_num = 0;	//다리설정
+	leg_num = 0;
 	start_bit = 0;	//시작비트
 	training_timer = 0;	//타이머0
 	Play_the_game = 0;
@@ -324,6 +347,8 @@ void clear_variable() {
 	init_bit = 0;
 	break_bit1 = 0;
 	break_bit2 = 0;
+	motor_bit = 0;
+	initial_timer = 0;
 
 	slow_start_timer = 0;
 	break_time_now = 0;
@@ -535,7 +560,7 @@ interrupt void scicTxFifoIsr(void) {
 	PieCtrlRegs.PIEACK.all = PIEACK_GROUP8;
 
 }
-
+/*
 // 응답 코드 확인
 interrupt void scicRxFifoIsr(void) {
 
@@ -609,7 +634,7 @@ interrupt void scicRxFifoIsr(void) {
 	  RxBuff2[b] = Receivedbuff2;
 	  b++;
 	  if(RxBuff2[3] == 0x02){
-		 a = 0;
+		 b = 0;
 	  }
    }
    else if (b == 12)
@@ -622,7 +647,7 @@ interrupt void scicRxFifoIsr(void) {
 	  RxBuff2[b] = Receivedbuff2;
 	  b++;
 	  if(RxBuff2[3] == 0x04){
-		 a = 0;
+		 b = 0;
 	  }
    }
    sprintf(RxBuff2, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c", RxBuff2[0], RxBuff2[1], RxBuff2[2], RxBuff2[3], RxBuff2[4], RxBuff2[5], RxBuff2[6], RxBuff2[7], RxBuff2[8], RxBuff2[9], RxBuff2[10], RxBuff2[11], RxBuff2[12], RxBuff2[13]);
@@ -631,7 +656,7 @@ interrupt void scicRxFifoIsr(void) {
    ScicRegs.SCIFFRX.bit.RXFFINTCLR = 1;         // Clear Interrupt flag
    PieCtrlRegs.PIEACK.all = PIEACK_GROUP8;      // Acknowledge interrupt to PIE
 }
-
+*/
 interrupt void sciaRxFifoIsr(void) {
 
 	Receivedbuff = SciaRegs.SCIRXBUF.bit.RXDT;
@@ -823,9 +848,9 @@ void Encoder_value_calculation()
 	Encoder_deg_new = 360 - (double)Encoder_sum * 0.3515625; // Encoder값 갱신. 1024 Pulse를 0 - 360 deg로 바꿔줌.
 	Encoder_deg_new = Encoder_deg_new - degree_offset;
 	if (Encoder_deg_new < 0) Encoder_deg_new = Encoder_deg_new + 360;
-	if (Encoder_deg_old - Encoder_deg_new >= 250 && Play_the_game == 1) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
+	if (Encoder_deg_old - Encoder_deg_new >= 250 && (Play_the_game == 1 || (leg_num !=0 && init_bit == 0))) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
 		Encoder_revcnt++; // 회전수 체크
-	if (Encoder_deg_old - Encoder_deg_new <= -250 && Play_the_game == 1)
+	if (Encoder_deg_old - Encoder_deg_new <= -250 && (Play_the_game == 1 || (leg_num !=0 && init_bit == 0)))
 	Encoder_revcnt--;
 
 	E_vel_deg_new = Encoder_revcnt * 360 + Encoder_deg_new;
@@ -1008,10 +1033,10 @@ int ConnectBluetooth() {
 }
 
 // 초기 모터 Enable
-void Motor_Enable()
+void Motor_Enable1()
 {
-	switch (Enable_num) {
-	case 1:
+	if(leg_num == 0)
+	{
 		uart[0] = 0x90;
 		uart[1] = 0x02;
 		uart[2] = 0x68;
@@ -1026,10 +1051,14 @@ void Motor_Enable()
 		uart[11] = 0x00;
 		uart[12] = 0x22;
 		uart[13] = 0x99;
-		Enable_num = 2;
 		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-		break;
-	case 2:
+	}
+}
+// 초기 모터 Enable
+void Motor_Enable2()
+{
+	if(motor_bit == 0)
+	{
 		uart[0] = 0x90;
 		uart[1] = 0x02;
 		uart[2] = 0x68;
@@ -1044,12 +1073,9 @@ void Motor_Enable()
 		uart[11] = 0x00;
 		uart[12] = 0xb3;
 		uart[13] = 0x07;
-		Enable_num = 1;
 		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-		break;
 	}
 }
-
 // 토크 값 변환 및 CRC 계산
 void Torque_Calculate()
 {
@@ -1261,7 +1287,10 @@ int IsPause() {
 		}
 		if (!pause_finish) {
 			if (init_bit == 1)
+			{
+				DegTimer = (Encoder_deg_new / 360) * 7.14;
 				init_bit = 0;
+			}
 			Robot_Initialize();
 			return 1;
 		}
@@ -1285,7 +1314,7 @@ void TrainAbnormalPerson() {
 	switch (mode_num) {
 	case 1:
 		break_duty = 1;
-/*		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
+		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
 			+ b1_1 * sin(Encoder_deg_new * w_1)
 			+ a2_1 * cos(2 * Encoder_deg_new * w_1)
 			+ b2_1 * sin(2 * Encoder_deg_new * w_1)
@@ -1329,13 +1358,13 @@ void TrainAbnormalPerson() {
 		torque = (torque / max_motor_torque);	// 모터 정격 토크 = 0.75
 		Torque_Calculate();
 		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-*/
+
 		break;
 
 	case 2:
 		flag2 = 2;
 		break_duty = 1;
-/*
+
 		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
 			+ b1_1 * sin(Encoder_deg_new * w_1)
 			+ a2_1 * cos(2 * Encoder_deg_new * w_1)
@@ -1405,8 +1434,11 @@ void TrainAbnormalPerson() {
 		torque = torque / gear_ratio; // 감속비 60
 		torque = (torque / max_motor_torque);	// 모터 정격 토크 = 0.75
 		Torque_Calculate();
+		time_Encoder_revcnt = Encoder_revcnt;
+		Encoder_deg_time = Encoder_deg_new;
+		E_vel_deg_time = E_vel_deg_new;
 		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-*/
+
 		break;
 
 	case 3:
@@ -1449,10 +1481,11 @@ int IsEnd() {
 
 void BeNormal() {
 	if (init_bit)
+	{
+		DegTimer = (Encoder_deg_new / 360) * 7.14;
 		init_bit = 0;
+	}
 	Robot_Initialize();
-	if (init_bit)
-		clear_variable();
 }
 
 int Type_Check_fun() {
@@ -1512,8 +1545,21 @@ void break_time() {
 	break_time_1 = (break_time_now - break_time_100 * 100) / break_time_now % 10;
 }
 
+int Initial_breaking(){
+	if ((initial_timer < time) && (motor_bit == 0))   //1000hz 1ms
+	{
+		++initial_timer;
+		return 0;
+	}
+	else if (initial_timer >= time) {
+		initial_timer = time+1;
+		motor_bit = 1;
+		return 1;
+	}
+	else return 0;
+}
 int Start_breaking() {
-	if ((slow_start_timer < 5000) && (start_bit == 1))   //200hz 5ms
+	if ((slow_start_timer < 5000) && (start_bit == 1))   //1000hz 5ms
 	{
 		++slow_start_timer;
 		return 0;
@@ -1531,9 +1577,20 @@ interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 100Hz
 
 	MetabolizeRehabilitationRobot();
 
+	Motor_Enable1();
+
 	if (!ConnectBluetooth())
 	{
-		Motor_Enable();
+		DegTimer = (Encoder_deg_new / 360) * 7.14;
+		SetDegTimer = 7.14;
+		goto RETURN;
+	}
+
+	Motor_Enable2();
+
+
+	if (!Initial_breaking())
+	{
 		goto RETURN;
 	}
 

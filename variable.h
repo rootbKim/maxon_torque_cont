@@ -51,8 +51,8 @@ double E_vel_deg_time = 0;
 double Position_error = 0;
 double Vel_error = 0;
 double Acc_error = 0;
-double Kp = 1.5;
-double Kd = 0.075;
+double Kp = 1.5;	// 1.5
+double Kd = 0.075;	// 0.075
 double Kv = 0.03;
 double Ka = 0.01;
 double Kp_term = 0;
@@ -199,8 +199,11 @@ double wa = 0.0349;
 Uint16 TimerCount = 0, TimerCount1 = 0, TimerCount2 = 0, MotorCount = 0, TimerCount_2 = 0;
 
 int slow_start_timer = 0;
+int initial_timer = 0;
+int time = 1000;
 unsigned int leg_num = 0;
 unsigned int start_bit = 0;
+unsigned int motor_bit = 0;
 unsigned int end_bit = 0;
 
 unsigned int move_distance_1000 = 0;
