@@ -1342,7 +1342,7 @@ void TrainAbnormalPerson() {
 		mass_torque = (double)mass * 0.005 * mass_torque;
 
 		Position_error = E_vel_deg_time - E_vel_deg_new;
-		torque_buffer = torque_interpolation * torque_scale + mass_torque * 0.5 + Kp * Position_error - Kd * Encoder_vel; // + integrator;
+		torque_buffer = torque_interpolation * torque_scale + mass_torque + Kp * Position_error - Kd * Encoder_vel; // + integrator;
 		Kp_term = Kp * Position_error;
 		Kd_term = Kd * Encoder_vel;
 		torque = torque_buffer * 1000;
@@ -1581,8 +1581,8 @@ interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 100Hz
 
 	if (!ConnectBluetooth())
 	{
-		DegTimer = (Encoder_deg_new / 360) * 7.14;
-		SetDegTimer = 7.14;
+		DegTimer = (Encoder_deg_new / 360) * 7.11;
+		SetDegTimer = 7.11; // 0.6km/h SetDegTimer
 		goto RETURN;
 	}
 

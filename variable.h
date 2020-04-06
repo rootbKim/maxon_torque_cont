@@ -40,7 +40,7 @@ int stuff_i = 0;
 unsigned short decimal2hexadecimal[8] = {0, };
 
 double DegTimer = 0;
-double BaseDegTimer = 2.142;  // 2km/h
+double BaseDegTimer = 2.133;  // 2km/h
 double SetDegTimer = 0;
 double Encoder_deg_time = 0;
 double Encoder_deg_time_old = 0;
@@ -116,84 +116,84 @@ double target_dis = 0;
 int pause_finish = 0;
 double target_time = 0;
 
-// Mass Torque 100%
-double a0 = 107.4;
-double a1 = -0.008972;
-double b1 = -0.02227;
-double a2 = 8.443;
-double b2 = -4.911;
-double a3 = 0.0004001;
-double b3 = -0.001289;
+// Mass Torque 50%
+double a0 = 53.72;
+double a1 = -0.004486;
+double b1 = -0.01114;
+double a2 = 4.221;
+double b2 = -2.455;
+double a3 = 0.0002001;
+double b3 = -0.0006445;
 double w = 0.01745;
 
 // Newton_1km
-double a0_1 = -0.08009;
-double a1_1 = -0.7486;
-double b1_1 = -2.089;
-double a2_1 = -0.2192;
-double b2_1 = -0.2818;
-double a3_1 = -0.03954;
-double b3_1 = 0.02539;
-double a4_1 = -0.03543;
-double b4_1 = -0.02386;
+double a0_1 = -0.07869;
+double a1_1 = -0.745;
+double b1_1 = -2.119;
+double a2_1 = -0.174;
+double b2_1 = -0.3115;
+double a3_1 = 0.02393;
+double b3_1 = -0.07717;
+double a4_1 = 0.009776;
+double b4_1 = 0.001882;
 double w_1 = 0.0349;
 
 // Newton_3km
-double a0_3 = -0.6832;
-double a1_3 = -5.218;
-double b1_3 = -0.1314;
-double a2_3 = -1.608;
-double b2_3 = -0.1195;
-double a3_3 = -0.6634;
-double b3_3 = 0.441;
-double a4_3 = -0.3319;
-double b4_3 = -0.2368;
+double a0_3 = -0.708;
+double a1_3 = -5.15;
+double b1_3 = -0.2478;
+double a2_3 = -1.163;
+double b2_3 = -0.3155;
+double a3_3 = -0.03081;
+double b3_3 = -0.4578;
+double a4_3 = 0.05215;
+double b4_3 = 0.002418;
 double w_3 = 0.0349;
 
 // Encoder_deg_time
-double ae0 = 178.8;
-double ae1 = -127.6;
-double be1 = -95.55;
-double ae2 = -65.83;
-double be2 = 18.9;
-double ae3 = -6.494;
-double be3 = 33.9;
-double ae4 = 9.825;
-double be4 = 15.11;
-double ae5 = 8.628;
-double be5 = 0.712;
-double ae6 = 3.074;
-double be6 = -2.617;
-double ae7 = -0.0374;
-double be7 = -1.438;
-double ae8 = -0.327;
-double be8 = -0.3416;
+double ae0 = 177.1;
+double ae1 = -135;
+double be1 = -88.77;
+double ae2 = -64.29;
+double be2 = 27.26;
+double ae3 = -0.6759;
+double be3 = 35.81;
+double ae4 = 13.35;
+double be4 = 13.03;
+double ae5 = 8.794;
+double be5 = -1.764;
+double ae6 = 1.916;
+double be6 = -3.579;
+double ae7 = -0.7842;
+double be7 = -1.22;
+double ae8 = -0.4171;
+double be8 = -0.003043;
 double we = 0;
-double w_base =   2.0048  ; // 2km/h
+double w_base =   1.9848  ; // 2km/h
 
 // Mode2 Kv parameter
-double av0 = 85.96;
-double av1 = -3.327;
-double bv1 = -17.33;
-double av2 = 0.4339;
-double bv2 = -2.847;
-double av3 = -0.2428;
-double bv3 = -0.7497;
-double av4 = 0.2398;
-double bv4 = -0.2869;
-double wv = 0.0349;
+double av0 = 86.25;
+double av1 = -2.805;
+double bv1 = -17.16;
+double av2 = 0.7057;
+double bv2 = -2.39;
+double av3 = 0.5507;
+double bv3 = -0.09314;
+double av4 = 0.05724;
+double bv4 = 0.08293;
+double wv = 0.03491;
 
 // Mode2 Ka parameter
-double aa0 = -0.1624;
-double aa1 = -51.82;
-double ba1 = 9.128;
-double aa2 = -15.3;
-double ba2 = 2.012;
-double aa3 = -6.466;
-double ba3 = 4.658;
-double aa4 = -2.93;
-double ba4 = -1.633;
-double wa = 0.0349;
+double aa0 = 0.0008013;
+double aa1 = -51.25;
+double ba1 = 7.753;
+double aa2 = -12.19;
+double ba2 = 0.6664;
+double aa3 = -1.037;
+double ba3 = -2.598;
+double aa4 = 0.3467;
+double ba4 = -0.4306;
+double wa = 0.03491;
 
 // 통신 변수 선언.
 Uint16 TimerCount = 0, TimerCount1 = 0, TimerCount2 = 0, MotorCount = 0, TimerCount_2 = 0;
