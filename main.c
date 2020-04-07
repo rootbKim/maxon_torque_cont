@@ -189,18 +189,9 @@ void Reg_setting_fun() {
 
 void Initialize_motor(int init_bit, int pause_bit, int end_bit)
 {
-	if(pause_bit == 1 || end_bit == 1)
-	{
-		Kp = 1.5;
-		Kd = 0.075;
-	}
-	else if(pause_bit == 0)
-	{
-		Kp = 0.3;
-		Kd = 0.075;
-	}
-	Kp = 0.3;
-	Kd = 0.075;
+
+//	Kp = 0.3;
+//	Kd = 0.075;
 
 	if(init_bit == 0)
 	{
@@ -257,8 +248,8 @@ void Initialize_motor(int init_bit, int pause_bit, int end_bit)
 		Encoder_acc = 0;
 		current_gain = 1;
 		gain_bit = 1;
-		Kp = 1.5;
-		Kd = 0.075;
+//		Kp = 1.5;
+//		Kd = 0.075;
 		Torque_Calculate();
 		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 	}
