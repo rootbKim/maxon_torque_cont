@@ -189,9 +189,16 @@ void Reg_setting_fun() {
 
 void Initialize_motor(int init_bit, int pause_bit, int end_bit)
 {
-
-//	Kp = 0.3;
-//	Kd = 0.075;
+	if(pause_bit == 1 || end_bit == 1)
+	{
+		Kp = 0.8;
+		Kd = 0.075;
+	}
+	else if(pause_bit == 0)
+	{
+		Kp = 0.3;
+		Kd = 0.075;
+	}
 
 	if(init_bit == 0)
 	{
@@ -248,8 +255,8 @@ void Initialize_motor(int init_bit, int pause_bit, int end_bit)
 		Encoder_acc = 0;
 		current_gain = 1;
 		gain_bit = 1;
-//		Kp = 1.5;
-//		Kd = 0.075;
+		Kp = 0.8;
+		Kd = 0.075;
 		Torque_Calculate();
 		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 	}
@@ -1353,7 +1360,6 @@ void TrainAbnormalPerson() {
 		break;
 
 	case 2:
-		flag2 = 2;
 		break_duty = 1;
 
 		torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
@@ -1411,7 +1417,7 @@ void TrainAbnormalPerson() {
 		if (Vel_error <= 0) Vel_error = 0;
 		if (Acc_error <= 0) Acc_error = 0;
 
-		torque_buffer = torque_interpolation * torque_scale + mass_torque * 0.5 * ratio_gain + Kv * Vel_error + Ka * Acc_error;
+		torque_buffer = torque_interpolation * torque_scale + mass_torque * ratio_gain + Kv * Vel_error + Ka * Acc_error;
 
 		torque = torque_buffer * 1000;
 		if (torque <= 0)
@@ -1419,7 +1425,6 @@ void TrainAbnormalPerson() {
 		if (torque >= 45000)
 		{
 			torque = 44900;
-			flag2++;
 		}
 
 		torque = torque / gear_ratio; // 감속비 60
@@ -1433,8 +1438,44 @@ void TrainAbnormalPerson() {
 		break;
 
 	case 3:
-
 		break_duty = 1;
+
+		torque_fourier_1 = a0_3 + a1_3 * cos(Encoder_deg_new * w_3)
+			+ b1_3 * sin(Encoder_deg_new * w_3)
+			+ a2_3 * cos(2 * Encoder_deg_new * w_3)
+			+ b2_3 * sin(2 * Encoder_deg_new * w_3)
+			+ a3_3 * cos(3 * Encoder_deg_new * w_3)
+			+ b3_3 * sin(3 * Encoder_deg_new * w_3)
+			+ a4_3 * cos(4 * Encoder_deg_new * w_3)
+			+ b4_3 * sin(4 * Encoder_deg_new * w_3);
+
+		mass_torque = a0 + a1 * cos(Encoder_deg_new * w)  // 최대 200kg;
+			+ b1 * sin(Encoder_deg_new * w)
+			+ a2 * cos(2 * Encoder_deg_new * w)
+			+ b2 * sin(2 * Encoder_deg_new * w)
+			+ a3 * cos(3 * Encoder_deg_new * w)
+			+ b3 * sin(3 * Encoder_deg_new * w);
+		mass_torque = (double)mass * 0.005 * mass_torque;
+
+		torque_interpolation = torque_fourier_1;
+
+		torque_buffer = torque_interpolation * torque_scale + mass_torque * ratio_gain;
+
+		torque = torque_buffer * 1000;
+		if (torque <= 0)
+			torque = 0;
+		if (torque >= 45000)
+		{
+			torque = 44900;
+		}
+
+		torque = torque / gear_ratio; // 감속비 60
+		torque = (torque / max_motor_torque);	// 모터 정격 토크 = 0.75
+		Torque_Calculate();
+		time_Encoder_revcnt = Encoder_revcnt;
+		Encoder_deg_time = Encoder_deg_new;
+		E_vel_deg_time = E_vel_deg_new;
+		ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 
 		break;
 	}
