@@ -27,8 +27,8 @@ long long torque = 0;
 double torque_scale = 4.3;
 double max_motor_torque = 0.75;
 unsigned int gear_ratio = 60;
-double torque_fourier_1 = 0;	// 1km/h fourier
-double torque_fourier_3 = 0;	// 3km/h fourier
+double torque_fourier_1 = 0;   // 1km/h fourier
+double torque_fourier_3 = 0;   // 3km/h fourier
 double torque_interpolation = 0;
 double torque_buffer = 0;
 double mass_torque = 0;
@@ -51,10 +51,10 @@ double E_vel_deg_time = 0;
 double Position_error = 0;
 double Vel_error = 0;
 double Acc_error = 0;
-double Kp = 0.8;	// 1.5
-double Kd = 0.075;	// 0.075
-double Kv = 0.03;
-double Ka = 0.01;
+double Kp = 0.8;   // 1.5
+double Kd = 0.075;   // 0.075
+double Kv = 0.01;
+double Ka = 0.005;
 double Kp_term = 0;
 double Kd_term = 0;
 
@@ -194,6 +194,14 @@ double ba3 = -2.598;
 double aa4 = 0.3467;
 double ba4 = -0.4306;
 double wa = 0.03491;
+
+double torque_degree1 = 0;
+double torque_degree2 = 180;
+double torque_degree_offset = 50;
+double torque_inflection_point = 0;
+double torque_inflection_gain = 5;
+double theta = 0;
+double Radian = 0;
 
 // 통신 변수 선언.
 Uint16 TimerCount = 0, TimerCount1 = 0, TimerCount2 = 0, MotorCount = 0, TimerCount_2 = 0;
