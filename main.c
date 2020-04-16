@@ -38,10 +38,14 @@ void break_time();
 
 void Motor_Enable1();
 void Motor_Enable2();
-unsigned short* decimal2hex(long torque);
+void Vel_Set();
+void MAXON_PVM_Set();
+void MAXON_CST_Set();
+unsigned short* decimal2hex(long dec);
 unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLength);
 void torque_fourier_constant(double target_gain);
 void Torque_Calculate();
+void Vel_Calculate();
 void Timer_set();
 
 //------------------함수------------------//
@@ -189,49 +193,30 @@ void Reg_setting_fun() {
 
 void Initialize_motor(int init_bit, int pause_bit, int end_bit)
 {
-   Kp = 0.3;
-   Kd = 0.075;
-
    if(init_bit == 0)
    {
-      Timer_set();
-      torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
-         + b1_1 * sin(Encoder_deg_new * w_1)
-         + a2_1 * cos(2 * Encoder_deg_new * w_1)
-         + b2_1 * sin(2 * Encoder_deg_new * w_1)
-         + a3_1 * cos(3 * Encoder_deg_new * w_1)
-         + b3_1 * sin(3 * Encoder_deg_new * w_1)
-         + a4_1 * cos(4 * Encoder_deg_new * w_1)
-         + b4_1 * sin(4 * Encoder_deg_new * w_1);
-
-      torque_interpolation = current_gain * torque_fourier_1;
-
-      Position_error = E_vel_deg_time - E_vel_deg_new;
-
-      torque_buffer = torque_interpolation * torque_scale + Kp * Position_error - Kd * Encoder_vel; // + integrator;
-
-      Kp_term = Kp * Position_error;
-      Kd_term = Kd * Encoder_vel;
-      torque = torque_buffer * 1000;
-      if (torque <= 0)
-         torque = 0;
-      if (torque >= 45000)
-      {
-         torque = 44900;
-            flag2++;
-      }
-
-      torque = torque / gear_ratio; // 감속비 60
-      torque = (torque / max_motor_torque);   // 모터 정격 토크 = 0.75
-      Torque_Calculate();
-      ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-
+	   if(init_flag<=2)
+	   {
+		   vel = 400;
+		   MAXON_PVM_Set();
+		   init_flag++;
+	   }
+	   else if(init_flag<=4)
+	   {
+		   Vel_Calculate();
+		   init_flag++;
+	   }
+	   else if(init_flag<=6)
+	   {
+		   Vel_Set();
+		   init_flag++;
+	   }
+	   else init_flag = 0;
    }
    else if(init_bit == 1)
    {
       if(leg_num == 1) DegTimer = 0.7798;
       if(leg_num == 2) DegTimer = 2.8527;
-//      DegTimer = (Encoder_deg_new / 360) * 4.284;
       torque = 0;
       torque_interpolation = 0;
       mass_torque = 0;
@@ -248,10 +233,8 @@ void Initialize_motor(int init_bit, int pause_bit, int end_bit)
       Encoder_acc = 0;
       current_gain = 1;
       gain_bit = 1;
-      Kp = 0.8;
-      Kd = 0.075;
-      Torque_Calculate();
-      ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
+      init_flag = 0;
+      init_flag2 = 0;
    }
 }
 
@@ -264,36 +247,31 @@ int Robot_Initialize() {
    //환측다리=오른발이면
    if (leg_num == 1) {
       if (!init_bit) {
-         break_duty = 1;   //브레이크 OFF
-         gain_bit = 1;
-         current_gain = 0.6;
-         Initialize_motor(init_bit, pause_bit, end_bit);
-
-         if (Encoder_deg_new >= 45 && Encoder_deg_new <= 55) {
+         if (Encoder_deg_new >= 50 && Encoder_deg_new <= 55) {
             break_duty = 0;
             velocity = 0;
             init_bit = 1;
             Initialize_motor(init_bit, pause_bit, end_bit);
+
             if(end_bit == 1) clear_variable();
             if(pause_finish == 0)   Play_the_game = 0;
             if (pause_finish == 0 && pause_bit)
                pause_finish = 1;
             return 1;
          }
-         return 0;
+         else
+         {
+             break_duty = 1;   //브레이크 OFF
+             Initialize_motor(init_bit, pause_bit, end_bit);
+             return 0;
+         }
       }
-      else
-         return 1;
+      else	return 1;
    }
    //왼발이면
    else if (leg_num == 2) {
       if (!init_bit) {
-         break_duty = 1;
-         gain_bit = 1;
-         current_gain = 0.6;
-         Initialize_motor(init_bit, pause_bit, end_bit);
-
-         if (Encoder_deg_new >= 225 && Encoder_deg_new <= 235) {
+         if (Encoder_deg_new >= 230 && Encoder_deg_new <= 235) {
             break_duty = 0;
             velocity = 0;
             init_bit = 1;
@@ -304,10 +282,14 @@ int Robot_Initialize() {
                pause_finish = 1;
             return 1;
          }
-         return 0;
+         else
+         {
+             break_duty = 1;   //브레이크 OFF
+             Initialize_motor(init_bit, pause_bit, end_bit);
+             return 0;
+         }
       }
-      else
-         return 1;
+      else	return 1;
    }
    return 0;
 }
@@ -534,9 +516,9 @@ void BT_transmit() {
 
 void Uart_transmit() {
    //   sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * torque), (long) (10000 * torque_interpolation), (long) (10000 * torque_buffer), (long) (10000 * Position_error), (long) (10000 * Encoder_deg_time), (long) (10000 * Encoder_deg_new), (long) (10000 * time_Encoder_revcnt), (long) (10000 * Encoder_revcnt), (long) (10000 * Kp), (long) (10000 * velocity));
-	//sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long) (100 * velocity), (long long) (10000 * torque_inflection_point), (long long) (10000 * Kp_term), (long long) (10000 * Kd_term));
-	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long) (100 * velocity), (long long) (10000 * torque_inflection_point), (long long) (10000 * Vel_error), (long long) (10000 * Acc_error));
-   //	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long)(10000 * torque), (long long)(10000 * torque_buffer), (long long)(10000 * torque_interpolation), (long long)(10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long)(10000 * Encoder_vel_deg), (long long)(10000 * Encoder_vel), (long long)(10000 * Encoder_acc_deg), (long long)(10000 * Encoder_acc), (long long)(10000 * Vel_error), (long long)(10000 * Acc_error), (long long)(100 * velocity), (long long)(10000 * current_gain), (long long)(10000 * ratio_gain));
+   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_dynamics), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long) (100 * velocity), (long long) (10000 * torque_inflection_point), (long long) (10000 * Kp_term), (long long) (10000 * Kd_term));
+   //sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long) (100 * velocity), (long long) (10000 * torque_inflection_point), (long long) (10000 * Vel_error), (long long) (10000 * Acc_error));
+   //   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long)(10000 * torque), (long long)(10000 * torque_buffer), (long long)(10000 * torque_interpolation), (long long)(10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long)(10000 * Encoder_vel_deg), (long long)(10000 * Encoder_vel), (long long)(10000 * Encoder_acc_deg), (long long)(10000 * Encoder_acc), (long long)(10000 * Vel_error), (long long)(10000 * Acc_error), (long long)(100 * velocity), (long long)(10000 * current_gain), (long long)(10000 * ratio_gain));
    //   sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * E_vel_deg_new), (long) (10000 * ED_mva), (long) (10000 * Encoder_vel), (long) (10000 * EV_mva), (long) (10000 * Encoder_acc), (long) (10000 * R_velocity), (long) (10000 * tablet_velocity), (long) (V_i), (long) (10000 * Encoder_deg_new));
    UART_Put_String(UT);
 }
@@ -843,7 +825,7 @@ void Encoder_value_calculation()
    if (Encoder_deg_old - Encoder_deg_new >= 250 && (Play_the_game == 1 || (leg_num !=0 && init_bit == 0))) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
       Encoder_revcnt++; // 회전수 체크
    if (Encoder_deg_old - Encoder_deg_new <= -250 && (Play_the_game == 1 || (leg_num !=0 && init_bit == 0)))
-	   Encoder_revcnt--;
+      Encoder_revcnt--;
 
    E_vel_deg_new = Encoder_revcnt * 360 + Encoder_deg_new;
    move_dis = 0.001 * E_vel_deg_new * 1190 / 360; // m단위
@@ -1069,6 +1051,62 @@ void Motor_Enable2()
       ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
    }
 }
+
+void Vel_Set()
+{
+   uart[0] = 0x90;
+    uart[1] = 0x02;
+    uart[2] = 0x68;
+    uart[3] = 0x04;
+    uart[4] = 0x01;
+    uart[5] = 0x40;
+    uart[6] = 0x60;
+    uart[7] = 0x00;
+    uart[8] = 0x0f;
+    uart[9] = 0x00;
+    uart[10] = 0x00;
+    uart[11] = 0x00;
+    uart[12] = 0xb3;
+    uart[13] = 0x07;
+    ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
+}
+void MAXON_PVM_Set()
+{
+      uart[0] = 0x90;
+      uart[1] = 0x02;
+      uart[2] = 0x68;
+      uart[3] = 0x04;
+      uart[4] = 0x01;
+      uart[5] = 0x60;
+      uart[6] = 0x60;
+      uart[7] = 0x00;
+      uart[8] = 0x03;
+      uart[9] = 0x00;
+      uart[10] = 0x00;
+      uart[11] = 0x00;
+      uart[12] = 0xba;
+      uart[13] = 0x09;
+      ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
+}
+
+void MAXON_CST_Set()
+{
+      uart[0] = 0x90;
+      uart[1] = 0x02;
+      uart[2] = 0x68;
+      uart[3] = 0x04;
+      uart[4] = 0x01;
+      uart[5] = 0x60;
+      uart[6] = 0x60;
+      uart[7] = 0x00;
+      uart[8] = 0x0a;
+      uart[9] = 0x00;
+      uart[10] = 0x00;
+      uart[11] = 0x00;
+      uart[12] = 0x2b;
+      uart[13] = 0x97;
+      ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
+}
 // 토크 값 변환 및 CRC 계산
 void Torque_Calculate()
 {
@@ -1204,11 +1242,146 @@ void Torque_Calculate()
    }
 }
 
+void Vel_Calculate()
+{
+   unsigned short* hexadecimal = decimal2hex(vel);
+   unsigned short DataArray[6];
+   unsigned short CRC = 0;
+
+   protocol_len = 14;
+
+   if (vel >= 0)
+   {
+      uart[0] = 0x90;
+      uart[1] = 0x02;
+      uart[2] = 0x68;
+      uart[3] = 0x04;
+      uart[4] = 0x01;
+      uart[5] = 0xff;
+      uart[6] = 0x60;
+      uart[7] = 0x00;
+      uart[8] = (hexadecimal[1] << 4) | hexadecimal[0];
+      uart[9] = (hexadecimal[3] << 4) | hexadecimal[2];
+      uart[10] = (hexadecimal[5] << 4) | hexadecimal[4];
+      uart[11] = (hexadecimal[7] << 4) | hexadecimal[6];
+
+      DataArray[0] = (uart[3] << 8) + uart[2];
+      DataArray[1] = (uart[5] << 8) + uart[4];
+      DataArray[2] = (uart[7] << 8) + uart[6];
+      DataArray[3] = (uart[9] << 8) + uart[8];
+      DataArray[4] = (uart[11] << 8) + uart[10];
+      DataArray[5] = 0x0000;
+
+      CRC = CalcFieldCRC(DataArray, 6);
+
+      uart[12] = (CRC & 0xff);
+      uart[13] = (CRC & 0xff00) >> 8;
+
+      if (uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90 || uart[12] == 0x90 || uart[13] == 0x90)
+      {
+         for (stuff_i = 8; stuff_i < 14; stuff_i++)
+         {
+            stuff_position++;
+
+            if (uart[stuff_i] == 0x90)
+            {
+               uart_buff[buff_i] = 0x90;
+               buff_i++;
+               uart_buff[buff_i] = 0x90;
+               buff_i++;
+
+               protocol_len++;
+
+               if (stuff_position2 == 0)
+               {
+                  stuff_position2 = stuff_position + 7;
+               }
+            }
+            else if (uart[stuff_i] != 0x90 && stuff_position2 != 0)
+            {
+               uart_buff[buff_i] = uart[stuff_i];
+               buff_i++;
+            }
+         }
+         for (stuff_i = stuff_position2; stuff_i < (stuff_position2 + buff_i); stuff_i++)
+         {
+            uart[stuff_i] = uart_buff[(stuff_i - stuff_position2)];
+         }
+
+         stuff_position = 0;
+         stuff_position2 = 0;
+         buff_i = 0;
+      }
+   }
+   else if (torque < 0)
+   {
+      uart[0] = 0x90;
+      uart[1] = 0x02;
+      uart[2] = 0x68;
+      uart[3] = 0x04;
+      uart[4] = 0x01;
+      uart[5] = 0xff;
+      uart[6] = 0x60;
+      uart[7] = 0x00;
+      uart[8] = -((hexadecimal[1] << 4) | hexadecimal[0]) & 0xff;
+      uart[9] = (-((hexadecimal[3] << 4) | hexadecimal[2]) - 1) & 0xff;
+      uart[10] = (-((hexadecimal[5] << 4) | hexadecimal[4]) - 1) & 0xff;
+      uart[11] = (-((hexadecimal[7] << 4) | hexadecimal[6]) - 1) & 0xff;
+
+      DataArray[0] = (uart[3] << 8) + uart[2];
+      DataArray[1] = (uart[5] << 8) + uart[4];
+      DataArray[2] = (uart[7] << 8) + uart[6];
+      DataArray[3] = (uart[9] << 8) + uart[8];
+      DataArray[4] = (uart[11] << 8) + uart[10];
+      DataArray[5] = 0x0000;
+
+      CRC = CalcFieldCRC(DataArray, 6);
+
+      uart[12] = (CRC & 0xff);
+      uart[13] = (CRC & 0xff00) >> 8;
+
+      if (uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90 || uart[12] == 0x90 || uart[13] == 0x90)
+      {
+         for (stuff_i = 8; stuff_i < 14; stuff_i++)
+         {
+            stuff_position++;
+
+            if (uart[stuff_i] == 0x90)
+            {
+               uart_buff[buff_i] = 0x90;
+               buff_i++;
+               uart_buff[buff_i] = 0x90;
+               buff_i++;
+
+               if (stuff_position2 == 0)
+               {
+                  stuff_position2 = stuff_position + 7;
+               }
+            }
+            else if (uart[stuff_i] != 0x90 && stuff_position2 != 0)
+            {
+               uart_buff[buff_i] = uart[stuff_i];
+               buff_i++;
+            }
+         }
+         for (stuff_i = stuff_position2; stuff_i < (stuff_position2 + buff_i); stuff_i++)
+         {
+            uart[stuff_i] = uart_buff[(stuff_i - stuff_position2)];
+         }
+
+         stuff_position = 0;
+         stuff_position2 = 0;
+         buff_i = 0;
+      }
+   }
+   ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
+}
+
 // hex값으로 변환
-unsigned short* decimal2hex(long torque)
+unsigned short* decimal2hex(long dec)
 {
    int position = 0;
-   long decimal = torque;
+   long decimal = dec;
 
    for (i = 0; i < 8; i++)
    {
@@ -1270,7 +1443,26 @@ void OutputPWM() {
 }
 
 int IsStart() {
-   return start_bit;
+
+  if(init_flag2<=2)
+  {
+	  vel = 0;
+	  Vel_Calculate();
+	  init_flag2++;
+  }
+  else if(init_flag2<=4)
+  {
+	  Vel_Set();
+	  init_flag2++;
+  }
+  else if(init_flag2<=6)
+  {
+	 MAXON_CST_Set();
+	 init_flag2++;
+  }
+  else init_flag2 = 0;
+
+  return start_bit;
 }
 
 int IsPause() {
@@ -1281,14 +1473,34 @@ int IsPause() {
       if (!pause_finish) {
          if (init_bit == 1)
          {
-            DegTimer = (Encoder_deg_new / 360) * 7.14;
+//            DegTimer = (Encoder_deg_new / 360) * 7.14;
             init_bit = 0;
          }
          Robot_Initialize();
          return 1;
       }
       else
-         return 1;
+      {
+    	 if(init_flag2<=2)
+    	 {
+    		 vel = 0;
+    		 Vel_Calculate();
+    		 init_flag2++;
+    	 }
+    	 else if(init_flag2<=4)
+    	 {
+    		 Vel_Set();
+    		 init_flag2++;
+    	 }
+    	 else if(init_flag2<=6)
+    	 {
+    		 MAXON_CST_Set();
+    		 init_flag2++;
+    	 }
+    	 else init_flag2 = 0;
+
+    	 return 1;
+      }
    }
    return 0;
 }
@@ -1363,16 +1575,18 @@ void TrainAbnormalPerson() {
          torque_inflection_point = 0;
       }
 
-      torque_buffer = torque_interpolation * torque_scale + torque_inflection_point + mass_torque + Kp * Position_error - Kd * Encoder_vel; // + integrator;
+      torque_dynamics = torque_interpolation * torque_scale + mass_torque;
+      if(torque_dynamics <= 0 && flag2 == 0) torque_dynamics = 0;
+
+      torque_buffer = torque_dynamics + torque_inflection_point + Kp * Position_error - Kd * Encoder_vel; // + integrator;
       Kp_term = Kp * Position_error;
       Kd_term = Kd * Encoder_vel;
       torque = torque_buffer * 1000;
       if (torque <= 0)
          torque = 0;
-      if (torque >= 45000)
+      if (torque >= 70000)
       {
-         torque = 44900;
-         flag2++;
+         torque = 69900;
       }
 
       torque = torque / gear_ratio; // 감속비 60
@@ -1465,7 +1679,10 @@ void TrainAbnormalPerson() {
          torque_inflection_point = 0;
       }
 
-      torque_buffer = torque_interpolation * torque_scale + torque_inflection_point + mass_torque * ratio_gain + Kv * Vel_error + Ka * Acc_error;
+      torque_dynamics = torque_interpolation * torque_scale + mass_torque * ratio_gain;
+      if(torque_dynamics <= 0) torque_dynamics = 0;
+
+      torque_buffer = torque_dynamics + torque_inflection_point + Kv * Vel_error + Ka * Acc_error;
 
       torque = torque_buffer * 1000;
       if (torque <= 0)
@@ -1686,13 +1903,12 @@ interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 100Hz
 
    if (!ConnectBluetooth())
    {
-      DegTimer = (Encoder_deg_new / 360) * 7.11;
-      SetDegTimer = 7.11; // 0.6km/h SetDegTimer
+//      DegTimer = (Encoder_deg_new / 360) * 7.11;
+//      SetDegTimer = 7.11; // 0.6km/h SetDegTimer
       goto RETURN;
    }
 
    Motor_Enable2();
-
 
    if (!Initial_breaking())
    {
