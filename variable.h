@@ -54,7 +54,7 @@ double Position_error = 0;
 double Vel_error = 0;
 double Acc_error = 0;
 double Kp = 0.8;   // 1.5
-double Kd = 0.075;   // 0.075
+double Kd = 0.04;   // 0.075
 double Kv = 0.01;
 double Ka = 0.005;
 double Kp_term = 0;
@@ -99,6 +99,7 @@ double EV_mva_old = 0;
 
 double move_dis = 0;
 unsigned int mode_num = 0;
+int velocity_flag = 0;
 double velocity = 0;
 double R_velocity = 0;
 double tablet_velocity = 0;

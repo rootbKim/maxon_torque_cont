@@ -247,7 +247,7 @@ int Robot_Initialize() {
    //환측다리=오른발이면
    if (leg_num == 1) {
       if (!init_bit) {
-         if (Encoder_deg_new >= 50 && Encoder_deg_new <= 55) {
+         if (Encoder_deg_new >= 48 && Encoder_deg_new <= 55) {
             break_duty = 0;
             velocity = 0;
             init_bit = 1;
@@ -263,6 +263,7 @@ int Robot_Initialize() {
          {
              break_duty = 1;   //브레이크 OFF
              Initialize_motor(init_bit, pause_bit, end_bit);
+             flag2++;
              return 0;
          }
       }
@@ -271,7 +272,7 @@ int Robot_Initialize() {
    //왼발이면
    else if (leg_num == 2) {
       if (!init_bit) {
-         if (Encoder_deg_new >= 230 && Encoder_deg_new <= 235) {
+         if (Encoder_deg_new >= 228 && Encoder_deg_new <= 235) {
             break_duty = 0;
             velocity = 0;
             init_bit = 1;
@@ -286,6 +287,7 @@ int Robot_Initialize() {
          {
              break_duty = 1;   //브레이크 OFF
              Initialize_motor(init_bit, pause_bit, end_bit);
+             flag2++;
              return 0;
          }
       }
@@ -877,13 +879,13 @@ void Moving_avg_degree()
 
    if (Encoder_deg_old - Encoder_deg_new <= -250)
    {
-      flag++;
+      velocity_flag++;
    }
    if (Encoder_deg_old - Encoder_deg_new >= 250)
    {
-      if (flag >= 1)
+      if (velocity_flag >= 1)
       {
-         flag = 0;
+         velocity_flag = 0;
       }
       else
       {
@@ -1538,8 +1540,6 @@ void TrainAbnormalPerson() {
       if (current_gain >= 1)   torque_interpolation = ((3 - current_gain) / 2) * torque_fourier_1 + ((current_gain - 1) / 2) * torque_fourier_3;
       else if (current_gain < 1) torque_interpolation = current_gain * torque_fourier_1;
 
-//     if(torque_interpolation <=0) torque_interpolation = 0;
-
       mass_torque = a0 + a1 * cos(Encoder_deg_new * w)  // 최대 200kg;
          + b1 * sin(Encoder_deg_new * w)
          + a2 * cos(2 * Encoder_deg_new * w)
@@ -1576,9 +1576,14 @@ void TrainAbnormalPerson() {
       }
 
       torque_dynamics = torque_interpolation * torque_scale + mass_torque;
-      if(torque_dynamics <= 0 && flag2 == 0) torque_dynamics = 0;
 
-      torque_buffer = torque_dynamics + torque_inflection_point + Kp * Position_error - Kd * Encoder_vel; // + integrator;
+      if(flag == 1)
+      {
+    	  torque_dynamics = 0;
+    	  torque_inflection_point = 0;
+      }
+
+      torque_buffer = torque_dynamics + torque_inflection_point + Kp * Position_error - Kd * Encoder_vel;
       Kp_term = Kp * Position_error;
       Kd_term = Kd * Encoder_vel;
       torque = torque_buffer * 1000;
@@ -1682,7 +1687,7 @@ void TrainAbnormalPerson() {
       torque_dynamics = torque_interpolation * torque_scale + mass_torque * ratio_gain;
       if(torque_dynamics <= 0) torque_dynamics = 0;
 
-      torque_buffer = torque_dynamics + torque_inflection_point + Kv * Vel_error + Ka * Acc_error;
+      torque_buffer = torque_dynamics + torque_inflection_point + (Kv * Vel_error + Ka * Acc_error) * ratio_gain;
 
       torque = torque_buffer * 1000;
       if (torque <= 0)
@@ -1705,22 +1710,25 @@ void TrainAbnormalPerson() {
    case 3:
       break_duty = 1;
 
-/*      torque_fourier_1 = a0_3 + a1_3 * cos(Encoder_deg_new * w_3)
+      torque_fourier_1 = a0_3 + a1_3 * cos(Encoder_deg_new * w_3)
          + b1_3 * sin(Encoder_deg_new * w_3)
          + a2_3 * cos(2 * Encoder_deg_new * w_3)
          + b2_3 * sin(2 * Encoder_deg_new * w_3)
          + a3_3 * cos(3 * Encoder_deg_new * w_3)
          + b3_3 * sin(3 * Encoder_deg_new * w_3)
          + a4_3 * cos(4 * Encoder_deg_new * w_3)
-         + b4_3 * sin(4 * Encoder_deg_new * w_3);*/
+         + b4_3 * sin(4 * Encoder_deg_new * w_3);
+      torque_fourier_3 = a0_3 + a1_3 * cos(Encoder_deg_new * w_3)
+         + b1_3 * sin(Encoder_deg_new * w_3)
+         + a2_3 * cos(2 * Encoder_deg_new * w_3)
+         + b2_3 * sin(2 * Encoder_deg_new * w_3)
+         + a3_3 * cos(3 * Encoder_deg_new * w_3)
+         + b3_3 * sin(3 * Encoder_deg_new * w_3)
+         + a4_3 * cos(4 * Encoder_deg_new * w_3)
+         + b4_3 * sin(4 * Encoder_deg_new * w_3);
 
-      mass_torque = a0 + a1 * cos(Encoder_deg_new * w)  // 최대 200kg;
-         + b1 * sin(Encoder_deg_new * w)
-         + a2 * cos(2 * Encoder_deg_new * w)
-         + b2 * sin(2 * Encoder_deg_new * w)
-         + a3 * cos(3 * Encoder_deg_new * w)
-         + b3 * sin(3 * Encoder_deg_new * w);
-      mass_torque = (double)mass * 0.005 * mass_torque;
+      if (velocity >= 1)   torque_interpolation = ((3 - velocity) / 2) * torque_fourier_1 + ((velocity - 1) / 2) * torque_fourier_3;
+      else if (velocity < 1) torque_interpolation = velocity * torque_fourier_1;
 
       if(Encoder_deg_new >= (360 + (torque_degree1 - torque_degree_offset)))
       {
@@ -1747,9 +1755,7 @@ void TrainAbnormalPerson() {
          torque_inflection_point = 0;
       }
 
-//      torque_interpolation = torque_fourier_1;
-
-      torque_buffer = torque_inflection_point;
+      torque_buffer = torque_interpolation + torque_inflection_point;
 
       torque = torque_buffer * 1000;
       if (torque <= 0)
@@ -1901,24 +1907,13 @@ interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 100Hz
 
    Motor_Enable1();
 
-   if (!ConnectBluetooth())
-   {
-//      DegTimer = (Encoder_deg_new / 360) * 7.11;
-//      SetDegTimer = 7.11; // 0.6km/h SetDegTimer
-      goto RETURN;
-   }
+   if (!ConnectBluetooth()) goto RETURN;
 
    Motor_Enable2();
 
-   if (!Initial_breaking())
-   {
-      goto RETURN;
-   }
+   if (!Initial_breaking()) goto RETURN;
 
-   if (!Robot_Initialize())
-   {
-      goto RETURN;
-   }
+   if (!Robot_Initialize()) goto RETURN;
 
    if (!IsStart()) goto RETURN;
 
@@ -1926,14 +1921,13 @@ interrupt void cpu_timer0_isr(void) // cpu timer 현재 제어주파수 100Hz
 
    if (Type_Check_fun()) goto RETURN;
 
-   if (!Start_breaking())
-      goto RETURN;
+   if (!Start_breaking()) goto RETURN;
+
    IncreaseTime();
    TrainAbnormalPerson();
    UpdateInformation();
 
-   if (IsEnd())
-      BeNormal();
+   if (IsEnd()) BeNormal();
 
    RETURN: OutputPWM();
 
