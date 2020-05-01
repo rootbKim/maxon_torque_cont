@@ -262,7 +262,6 @@ int Robot_Initialize() {
          {
              break_duty = 1;   //브레이크 OFF
              Initialize_motor();
-             flag2++;
              return 0;
          }
       }
@@ -287,7 +286,6 @@ int Robot_Initialize() {
          {
              break_duty = 1;   //브레이크 OFF
              Initialize_motor();
-             flag2++;
              return 0;
          }
       }
@@ -523,10 +521,12 @@ void BT_transmit() {
 
 void Uart_transmit() {
    //   sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * torque), (long) (10000 * torque_interpolation), (long) (10000 * torque_buffer), (long) (10000 * Position_error), (long) (10000 * Encoder_deg_time), (long) (10000 * Encoder_deg_new), (long) (10000 * time_Encoder_revcnt), (long) (10000 * Encoder_revcnt), (long) (10000 * Kp), (long) (10000 * velocity));
-   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_dynamics), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long) (10000 * Encoder_deg_time), (long long) (10000 * Encoder_revcnt), (long long) (10000 * time_Encoder_revcnt), (long long) (100 * velocity), (long long) (10000 * torque_inflection_point), (long long) (10000 * Kp_term), (long long) (10000 * Kd_term));
-   //sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long) (100 * velocity), (long long) (10000 * torque_inflection_point), (long long) (10000 * Vel_error), (long long) (10000 * Acc_error));
+   //	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_dynamics), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long) (10000 * Encoder_deg_time), (long long) (10000 * Encoder_revcnt), (long long) (10000 * time_Encoder_revcnt), (long long) (100 * velocity), (long long) (10000 * torque_inflection_point), (long long) (10000 * Kp_term), (long long) (10000 * Kd_term));
+   //	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long) (100 * velocity), (long long) (10000 * torque_inflection_point), (long long) (10000 * Vel_error), (long long) (10000 * Acc_error), (long long) (10000 * Encoder_acc), (long long) (10000 * Encoder_acc_deg));
    //   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long)(10000 * torque), (long long)(10000 * torque_buffer), (long long)(10000 * torque_interpolation), (long long)(10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long)(10000 * Encoder_vel_deg), (long long)(10000 * Encoder_vel), (long long)(10000 * Encoder_acc_deg), (long long)(10000 * Encoder_acc), (long long)(10000 * Vel_error), (long long)(10000 * Acc_error), (long long)(100 * velocity), (long long)(10000 * current_gain), (long long)(10000 * ratio_gain));
    //   sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * E_vel_deg_new), (long) (10000 * ED_mva), (long) (10000 * Encoder_vel), (long) (10000 * EV_mva), (long) (10000 * Encoder_acc), (long) (10000 * R_velocity), (long) (10000 * tablet_velocity), (long) (V_i), (long) (10000 * Encoder_deg_new));
+	   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque_buffer), (long long) (10000 * torque_dynamics), (long long) (10000 * torque_inflection_point), (long long)(10000 * Encoder_deg_time), (long long)(10000 * Encoder_deg_new), (long long) (10000 * E_vel_deg_new), (long long) (10000 * E_vel_deg_time), (long long) (100 * velocity), (long long) (10000 * Encoder_vel), (long long) (10000 * Encoder_vel_deg), (long long) (10000 * Encoder_acc), (long long) (10000 * Encoder_acc_deg));
+
    UART_Put_String(UT);
 }
 
@@ -1664,17 +1664,17 @@ void TrainAbnormalPerson() {
       if (Vel_error <= 0) Vel_error = 0;
       if (Acc_error <= 0) Acc_error = 0;
 
-      if(Encoder_deg_new >= (360 + (torque_degree1 - torque_degree_offset)))
+      if((Encoder_deg_new >= (torque_degree1 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree1 + torque_degree_offset)))
       {
-         theta = (Encoder_deg_new - 360 + (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
+         theta = (Encoder_deg_new - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
          Radian = theta * 3.141592 / 180;
          torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
       }
-      else if(Encoder_deg_new <= (torque_degree1 + torque_degree_offset))
+      else if(Encoder_deg_new <= (torque_degree1 + torque_degree_offset) - 360)
       {
-          theta = (Encoder_deg_new - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
-          Radian = theta * 3.141592 / 180;
-          torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
+         theta = (Encoder_deg_new + 360 - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
+         Radian = theta * 3.141592 / 180;
+         torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
       }
       else if((Encoder_deg_new >= (torque_degree2 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree2 + torque_degree_offset)))
       {
@@ -1692,7 +1692,16 @@ void TrainAbnormalPerson() {
       torque_dynamics = torque_interpolation * torque_scale + mass_torque * ratio_gain;
       if(torque_dynamics <= 0) torque_dynamics = 0;
 
-      torque_buffer = torque_dynamics + torque_inflection_point + (Kv * Vel_error + Ka * Acc_error) * ratio_gain;
+      if(flag == 1)
+      {
+    	  Vel_error = 0;
+    	  Acc_error = 0;
+      }
+      if(flag2 == 1)
+      {
+          torque_dynamics = (torque_interpolation * torque_scale + mass_torque) * ratio_gain;
+      }
+      torque_buffer = torque_dynamics + (torque_inflection_point + Kv * Vel_error + Ka * Acc_error) * ratio_gain;
 
       torque = torque_buffer * 1000;
       if (torque <= 0)
@@ -1732,26 +1741,29 @@ void TrainAbnormalPerson() {
          + a4_3 * cos(4 * Encoder_deg_new * w_3)
          + b4_3 * sin(4 * Encoder_deg_new * w_3);
 
-      if (velocity >= 1)   torque_interpolation = ((3 - velocity) / 2) * torque_fourier_1 + ((velocity - 1) / 2) * torque_fourier_3;
-      else if (velocity < 1) torque_interpolation = velocity * torque_fourier_1;
+      velocity_mode3 = velocity;
+      if(velocity_mode3 <= 1) velocity_mode3 = 1;
+
+      if (velocity_mode3 >= 1)   torque_interpolation = ((3 - velocity_mode3) / 2) * torque_fourier_1 + ((velocity_mode3 - 1) / 2) * torque_fourier_3;
+      else if (velocity_mode3 < 1) torque_interpolation = velocity_mode3 * torque_fourier_1;
 
       if((Encoder_deg_new >= (torque_degree1 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree1 + torque_degree_offset)))
       {
          theta = (Encoder_deg_new - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
          Radian = theta * 3.141592 / 180;
-         torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
+         torque_inflection_point = torque_inflection_gain * velocity_mode3 * (1 - cos(Radian));
       }
       else if(Encoder_deg_new <= (torque_degree1 + torque_degree_offset) - 360)
       {
          theta = (Encoder_deg_new + 360 - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
          Radian = theta * 3.141592 / 180;
-         torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
+         torque_inflection_point = torque_inflection_gain * velocity_mode3 * (1 - cos(Radian));
       }
       else if((Encoder_deg_new >= (torque_degree2 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree2 + torque_degree_offset)))
       {
          theta = (Encoder_deg_new - (torque_degree2 - torque_degree_offset)) * (180 / torque_degree_offset);
          Radian = theta * 3.141592 / 180;
-         torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
+         torque_inflection_point = torque_inflection_gain * velocity_mode3 * (1 - cos(Radian));
       }
       else
       {
@@ -1760,7 +1772,7 @@ void TrainAbnormalPerson() {
          torque_inflection_point = 0;
       }
 
-      torque_buffer = torque_inflection_point;
+      torque_buffer = torque_interpolation * torque_scale + torque_inflection_point;
 
       torque = torque_buffer * 1000;
       if (torque <= 0)

@@ -55,7 +55,7 @@ double Vel_error = 0;
 double Acc_error = 0;
 double Kp = 0.76;   // 1.5
 double Kd = 0.13;   // 0.075
-double Kv = 0.01;
+double Kv = 0.03;
 double Ka = 0.005;
 double Kp_term = 0;
 double Kd_term = 0;
@@ -65,6 +65,7 @@ double ratio_target_gain = 0;
 double ratio_gain = 0;
 double current_gain = 1;
 double gain_step = 0.1;
+double velocity_mode3 = 0;
 
 extern Uint16 RamfuncsLoadStart;
 extern Uint16 RamfuncsLoadEnd;
