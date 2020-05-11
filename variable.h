@@ -34,7 +34,7 @@ double torque_interpolation = 0;
 double torque_buffer = 0;
 double mass_torque = 0;
 double torque_dynamics = 0;
-int mass = 75;
+int mass = 85;
 int stuff_position = 0;
 int stuff_position2 = 0;
 int buff_i = 0;
@@ -66,6 +66,7 @@ double ratio_gain = 0;
 double current_gain = 1;
 double gain_step = 0.1;
 double velocity_mode3 = 0;
+double active_ratio_gain = 1;
 
 extern Uint16 RamfuncsLoadStart;
 extern Uint16 RamfuncsLoadEnd;
@@ -208,6 +209,7 @@ double torque_inflection_point = 0;
 double torque_inflection_gain = 5;
 double theta = 0;
 double Radian = 0;
+double torque_intention = 0;
 
 // 통신 변수 선언.
 Uint16 TimerCount = 0, TimerCount1 = 0, TimerCount2 = 0, MotorCount = 0, TimerCount_2 = 0;
