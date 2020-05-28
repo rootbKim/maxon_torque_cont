@@ -34,7 +34,7 @@ double torque_interpolation = 0;
 double torque_buffer = 0;
 double mass_torque = 0;
 double torque_dynamics = 0;
-int mass = 85;
+int mass = 75;
 int stuff_position = 0;
 int stuff_position2 = 0;
 int buff_i = 0;
@@ -55,8 +55,8 @@ double Vel_error = 0;
 double Acc_error = 0;
 double Kp = 0.76;   // 1.5
 double Kd = 0.13;   // 0.075
-double Kv = 0.03;
-double Ka = 0.005;
+double Kv = 0.03;	// 0.03
+double Ka = 0.005;	// 0.005
 double Kp_term = 0;
 double Kd_term = 0;
 
@@ -82,7 +82,7 @@ int Enable_num = 1;
 
 Uint32 Encoder[10], Encoder_sum = 0, Encoder_cnt = 0;
 double Encoder_deg_new = 0;
-double degree_offset = 2;
+double degree_offset = 10;
 double Encoder_deg_old = 0;
 double Encoder_deg = 0;
 Uint32 Encoder_revcnt = 0;

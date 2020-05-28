@@ -525,8 +525,9 @@ void Uart_transmit() {
    //	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long) (100 * velocity), (long long) (10000 * torque_inflection_point), (long long) (10000 * Vel_error), (long long) (10000 * Acc_error), (long long) (10000 * Encoder_acc), (long long) (10000 * Encoder_acc_deg));
    //   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long)(10000 * torque), (long long)(10000 * torque_buffer), (long long)(10000 * torque_interpolation), (long long)(10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long)(10000 * Encoder_vel_deg), (long long)(10000 * Encoder_vel), (long long)(10000 * Encoder_acc_deg), (long long)(10000 * Encoder_acc), (long long)(10000 * Vel_error), (long long)(10000 * Acc_error), (long long)(100 * velocity), (long long)(10000 * current_gain), (long long)(10000 * ratio_gain));
    //   sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * E_vel_deg_new), (long) (10000 * ED_mva), (long) (10000 * Encoder_vel), (long) (10000 * EV_mva), (long) (10000 * Encoder_acc), (long) (10000 * R_velocity), (long) (10000 * tablet_velocity), (long) (V_i), (long) (10000 * Encoder_deg_new));
-      sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque_buffer), (long long) (10000 * torque_dynamics), (long long) (10000 * torque_inflection_point), (long long)(10000 * Encoder_deg_time), (long long)(10000 * Encoder_deg_new), (long long) (10000 * E_vel_deg_new), (long long) (10000 * E_vel_deg_time), (long long) (100 * velocity), (long long) (10000 * Encoder_vel), (long long) (10000 * Encoder_vel_deg), (long long) (10000 * Encoder_acc), (long long) (10000 * Encoder_acc_deg), (long long) (10000 * torque_intention));
+   //   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque_buffer), (long long) (10000 * torque_dynamics), (long long) (10000 * torque_inflection_point), (long long)(10000 * Encoder_deg_time), (long long)(10000 * Encoder_deg_new), (long long) (10000 * E_vel_deg_new), (long long) (10000 * E_vel_deg_time), (long long) (100 * velocity), (long long) (10000 * Encoder_vel), (long long) (10000 * Encoder_vel_deg), (long long) (10000 * Encoder_acc), (long long) (10000 * Encoder_acc_deg), (long long) (10000 * torque_intention));
    //   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque_buffer), (long long) (10000 * torque_dynamics), (long long) (10000 * torque_inflection_point), (long long)(10000 * Encoder_deg_new), (long long) (10000 * velocity_mode3), (long long) (10000 * velocity), (long long) (10000 * Encoder_vel), (long long) (10000 * Encoder_vel_deg));
+	sprintf(UT, "%ld, %ld, \n\0", (long) (10000 * Encoder_deg_new), (long) (10000 * Encoder_vel));
    UART_Put_String(UT);
 }
 
@@ -783,8 +784,7 @@ interrupt void sciaRxFifoIsr(void) {
       if (mode_num == 2) {
          target_gain = atof(&RxBuff[2]);
          target_gain = target_gain * 0.1 * ratio_gain;
-         target_gain = (int)(target_gain * 10);
-         target_gain = target_gain / 10;
+         current_gain = target_gain;
          RxBuff[6] = 0;
       }
       else RxBuff[6] = 0;
@@ -931,6 +931,10 @@ void MetabolizeRehabilitationRobot() {
    {
       TimerCount1 = 0;
       Encoder_define();
+/*      if (start_bit && (!end_bit))
+      {
+    	  if (Play_the_game) Uart_transmit();
+      }*/
    }
 
    if (Play_the_game == 1) Timer_set();
@@ -1582,12 +1586,6 @@ void TrainAbnormalPerson() {
 
       torque_dynamics = torque_interpolation * torque_scale + mass_torque;
 
-      if(flag == 1)
-      {
-    	  torque_dynamics = 0;
-    	  torque_inflection_point = 0;
-      }
-
       torque_buffer = torque_dynamics + torque_inflection_point + Kp * Position_error - Kd * Encoder_vel;
       Kp_term = Kp * Position_error;
       Kd_term = Kd * Encoder_vel;
@@ -1688,18 +1686,15 @@ void TrainAbnormalPerson() {
          torque_inflection_point = 0;
       }
 
-      torque_dynamics = torque_interpolation * torque_scale + mass_torque * ratio_gain;
-      if(torque_dynamics <= 0) torque_dynamics = 0;
-
+//      torque_dynamics = torque_interpolation * torque_scale + mass_torque * ratio_gain;
+      torque_dynamics = torque_interpolation * torque_scale + mass_torque;
       if(flag == 1)
       {
-          if(torque_intention <= 0) torque_intention = 0;
+          torque_intention = 0;
       }
-      if(flag2 == 1)
-      {
-          torque_dynamics = (torque_interpolation * torque_scale + mass_torque) * ratio_gain;
-      }
-      torque_buffer = torque_dynamics + (torque_inflection_point + torque_intention) * ratio_gain;
+
+//      torque_buffer = torque_dynamics + (torque_inflection_point + torque_intention) * ratio_gain;
+      torque_buffer = (torque_dynamics + torque_inflection_point) * ratio_gain + torque_intention;
 
       torque = torque_buffer * 1000;
       if (torque <= 0)
@@ -1782,7 +1777,6 @@ void TrainAbnormalPerson() {
       }
 
       torque_dynamics = torque_interpolation * torque_scale;
-      if(torque_dynamics <= 0) torque_dynamics = 0;
 
       torque_buffer = (torque_dynamics + torque_inflection_point) * active_ratio_gain;
 
@@ -1801,8 +1795,6 @@ void TrainAbnormalPerson() {
       Encoder_deg_time = Encoder_deg_new;
       E_vel_deg_time = E_vel_deg_new;
       ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
-
-      Kd_term = Encoder_vel;
 
       break;
    }
