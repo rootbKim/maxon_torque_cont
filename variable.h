@@ -63,6 +63,7 @@ double Kd_term = 0;
 double target_gain = 1;
 double ratio_target_gain = 0;
 double ratio_gain = 0;
+double target_buff_gain = 1;
 double current_gain = 1;
 double gain_step = 0.1;
 double velocity_mode3 = 0;

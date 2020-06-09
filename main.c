@@ -783,6 +783,7 @@ interrupt void sciaRxFifoIsr(void) {
    else if (RxBuff[0] == '!' && RxBuff[1] == 'R' && RxBuff[4] == '?') {
       if (mode_num == 2) {
          target_gain = atof(&RxBuff[2]);
+         target_buff_gain = target_gain * 0.1;
          target_gain = target_gain * 0.1 * ratio_gain;
          current_gain = target_gain;
          RxBuff[6] = 0;
@@ -1650,11 +1651,11 @@ void TrainAbnormalPerson() {
          + b3 * sin(3 * Encoder_deg_new * w);
       mass_torque = (double)mass * 0.005 * mass_torque;
 
-      Encoder_vel_deg = Encoder_vel_deg * current_gain;
-      Encoder_acc_deg = Encoder_acc_deg * current_gain * current_gain;
+      Encoder_vel_deg = Encoder_vel_deg * target_gain;
+      Encoder_acc_deg = Encoder_acc_deg * target_gain * target_gain;
 
-      if (current_gain >= 1)   torque_interpolation = ((3 - current_gain) / 2) * torque_fourier_1 + ((current_gain - 1) / 2) * torque_fourier_3;
-      else if (current_gain < 1) torque_interpolation = current_gain * torque_fourier_1;
+      if (target_buff_gain >= 1)   torque_interpolation = ((3 - target_buff_gain) / 2) * torque_fourier_1 + ((target_buff_gain - 1) / 2) * torque_fourier_3;
+      else if (target_buff_gain < 1) torque_interpolation = target_buff_gain * torque_fourier_1;
 
       Vel_error = Encoder_vel - Encoder_vel_deg;
       Acc_error = Encoder_acc - Encoder_acc_deg;
@@ -1665,19 +1666,19 @@ void TrainAbnormalPerson() {
       {
          theta = (Encoder_deg_new - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
          Radian = theta * 3.141592 / 180;
-         torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
+         torque_inflection_point = torque_inflection_gain * target_buff_gain * (1 - cos(Radian));
       }
       else if(Encoder_deg_new <= (torque_degree1 + torque_degree_offset) - 360)
       {
          theta = (Encoder_deg_new + 360 - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
          Radian = theta * 3.141592 / 180;
-         torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
+         torque_inflection_point = torque_inflection_gain * target_buff_gain * (1 - cos(Radian));
       }
       else if((Encoder_deg_new >= (torque_degree2 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree2 + torque_degree_offset)))
       {
          theta = (Encoder_deg_new - (torque_degree2 - torque_degree_offset)) * (180 / torque_degree_offset);
          Radian = theta * 3.141592 / 180;
-         torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
+         torque_inflection_point = torque_inflection_gain * target_buff_gain * (1 - cos(Radian));
       }
       else
       {
