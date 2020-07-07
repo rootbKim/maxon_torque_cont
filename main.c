@@ -48,6 +48,7 @@ void torque_fourier_constant(double target_gain);
 void Torque_Calculate();
 void Vel_Calculate();
 void Timer_set();
+double Degree_set(double degree);
 
 //------------------ÇÔ¼ö------------------//
 void InitEPwm1Module(void);
@@ -527,7 +528,7 @@ void Uart_transmit() {
    //   sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * E_vel_deg_new), (long) (10000 * ED_mva), (long) (10000 * Encoder_vel), (long) (10000 * EV_mva), (long) (10000 * Encoder_acc), (long) (10000 * R_velocity), (long) (10000 * tablet_velocity), (long) (V_i), (long) (10000 * Encoder_deg_new));
    //   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque_buffer), (long long) (10000 * torque_dynamics), (long long) (10000 * torque_inflection_point), (long long)(10000 * Encoder_deg_time), (long long)(10000 * Encoder_deg_new), (long long) (10000 * E_vel_deg_new), (long long) (10000 * E_vel_deg_time), (long long) (100 * velocity), (long long) (10000 * Encoder_vel), (long long) (10000 * Encoder_vel_deg), (long long) (10000 * Encoder_acc), (long long) (10000 * Encoder_acc_deg), (long long) (10000 * torque_intention));
    //   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque_buffer), (long long) (10000 * torque_dynamics), (long long) (10000 * torque_inflection_point), (long long)(10000 * Encoder_deg_new), (long long) (10000 * velocity_mode3), (long long) (10000 * velocity), (long long) (10000 * Encoder_vel), (long long) (10000 * Encoder_vel_deg));
-	sprintf(UT, "%ld, %ld, \n\0", (long) (10000 * Encoder_deg_new), (long) (10000 * Encoder_vel));
+	sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * torque_interpolation), (long) (10000 * mass_torque), (long) (10000 * torque_inflection_point), (long) (10000 * Kp_term), (long) (10000 * Kd_term), (long) (10000 * Encoder_deg_new));
    UART_Put_String(UT);
 }
 
@@ -932,10 +933,10 @@ void MetabolizeRehabilitationRobot() {
    {
       TimerCount1 = 0;
       Encoder_define();
-/*      if (start_bit && (!end_bit))
+      if (start_bit && (!end_bit))
       {
     	  if (Play_the_game) Uart_transmit();
-      }*/
+      }
    }
 
    if (Play_the_game == 1) Timer_set();
@@ -1001,15 +1002,56 @@ void Timer_set() {
 
    E_vel_deg_time = time_Encoder_revcnt * 360 + Encoder_deg_time;
    Encoder_deg_time_old = Encoder_deg_time;
+
 }
 
+double Degree_set(double degree)
+{
+	   time_degree = at0 + at1 * cos(degree * wt)
+	      + bt1 * sin(degree * wt)
+	      + at2 * cos(2 * degree * wt)
+	      + bt2 * sin(2 * degree * wt)
+	      + at3 * cos(3 * degree * wt)
+	      + bt3 * sin(3 * degree * wt)
+	      + at4 * cos(4 * degree * wt)
+	      + bt4 * sin(4 * degree * wt)
+	      + at5 * cos(5 * degree * wt)
+	      + bt5 * sin(5 * degree * wt)
+	      + at6 * cos(6 * degree * wt)
+	      + bt6 * sin(6 * degree * wt)
+	      + at7 * cos(7 * degree * wt)
+	      + bt7 * sin(7 * degree * wt)
+	      + at8 * cos(8 * degree * wt)
+	      + bt8 * sin(8 * degree * wt);
+
+	   return time_degree;
+}
 void torque_fourier_constant(double current_gain)
 {
    int current_num = current_gain * 10;
    double base_num = (double)(current_num) / 20;
+   double base_num2 = 1/current_gain;
    gain_bit = 0;
    we = w_base * base_num;
    SetDegTimer = BaseDegTimer / base_num;
+
+   at0 = at0_base * base_num2;
+   at1 = at1_base * base_num2;
+   bt1 = bt1_base * base_num2;
+   at2 = at2_base * base_num2;
+   bt2 = bt2_base * base_num2;
+   at3 = at3_base * base_num2;
+   bt3 = bt3_base * base_num2;
+   at4 = at4_base * base_num2;
+   bt4 = bt4_base * base_num2;
+   at5 = at5_base * base_num2;
+   bt5 = bt5_base * base_num2;
+   at6 = at6_base * base_num2;
+   bt6 = bt6_base * base_num2;
+   at7 = at7_base * base_num2;
+   bt7 = bt7_base * base_num2;
+   at8 = at8_base * base_num2;
+   bt8 = bt8_base * base_num2;
 }
 
 int ConnectBluetooth() {
@@ -1559,6 +1601,10 @@ void TrainAbnormalPerson() {
       mass_torque = (double)mass * 0.005 * mass_torque;
 
       Position_error = E_vel_deg_time - E_vel_deg_new;
+      if(Position_error <=0){
+    	  DegTimer = Degree_set(Encoder_deg_new);
+    	  flag2++;
+      }
 
       if((Encoder_deg_new >= (torque_degree1 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree1 + torque_degree_offset)))
       {
