@@ -227,6 +227,7 @@ void Initialize_motor_variable()
    Encoder_vel_deg = 0;
    Encoder_acc_deg = 0;
    Encoder_deg_time = 0;
+   Encoder_deg_time_old = 0;
    E_vel_deg_time = 0;
    Encoder_revcnt = 0;
    time_Encoder_revcnt = 0;
@@ -528,8 +529,9 @@ void Uart_transmit() {
    //   sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * E_vel_deg_new), (long) (10000 * ED_mva), (long) (10000 * Encoder_vel), (long) (10000 * EV_mva), (long) (10000 * Encoder_acc), (long) (10000 * R_velocity), (long) (10000 * tablet_velocity), (long) (V_i), (long) (10000 * Encoder_deg_new));
    //   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque_buffer), (long long) (10000 * torque_dynamics), (long long) (10000 * torque_inflection_point), (long long)(10000 * Encoder_deg_time), (long long)(10000 * Encoder_deg_new), (long long) (10000 * E_vel_deg_new), (long long) (10000 * E_vel_deg_time), (long long) (100 * velocity), (long long) (10000 * Encoder_vel), (long long) (10000 * Encoder_vel_deg), (long long) (10000 * Encoder_acc), (long long) (10000 * Encoder_acc_deg), (long long) (10000 * torque_intention));
    //   sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque_buffer), (long long) (10000 * torque_dynamics), (long long) (10000 * torque_inflection_point), (long long)(10000 * Encoder_deg_new), (long long) (10000 * velocity_mode3), (long long) (10000 * velocity), (long long) (10000 * Encoder_vel), (long long) (10000 * Encoder_vel_deg));
-	sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * torque_interpolation), (long) (10000 * mass_torque), (long) (10000 * torque_inflection_point), (long) (10000 * Kp_term), (long) (10000 * Kd_term), (long) (10000 * Encoder_deg_new));
-   UART_Put_String(UT);
+	 sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * torque_interpolation), (long) (10000 * mass_torque), (long) (10000 * torque_inflection_point), (long) (10000 * Kp_term), (long) (10000 * Kd_term), (long) (10000 * Encoder_deg_new), (long) (10000 * Encoder_deg_time));
+  //sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * Encoder_deg_new), (long) (Encoder[0]), (long) (Encoder[1]), (long) (Encoder[2]), (long) (Encoder[3]), (long) (Encoder[4]), (long) (Encoder[5]), (long) (Encoder[6]), (long) (Encoder[7]), (long) (Encoder[8]), (long) (Encoder[9]), (long) (10000 * Encoder_deg_mvg));
+	UART_Put_String(UT);
 }
 
 interrupt void scicTxFifoIsr(void) {
@@ -824,13 +826,23 @@ void Encoder_value_calculation()
 {
    Encoder_sum = 0;
 
+/*   // Encoder high bit가 1이 되어야 하는데, 0이 되는 경우가 발생하여 보정해 줌.
+   for (Encoder_cnt = 4; Encoder_cnt < 10; Encoder_cnt++) {
+	   if(Encoder_old[Encoder_cnt-1] == 0 && Encoder_old[Encoder_cnt] == 1 && Encoder[Encoder_cnt-1] == 1 && Encoder[Encoder_cnt] == 1)
+	   {
+		   Encoder[Encoder_cnt] = 0;
+   	   }
+   }
+*/
    for (Encoder_cnt = 0; Encoder_cnt < 10; Encoder_cnt++) {
       Encoder_sum += Encoder[Encoder_cnt] << Encoder_cnt; // Encoder_sum 은 0-1024 Pulse까지의 수를 Count해줌.
    }
 
    Encoder_deg_new = 360 - (double)Encoder_sum * 0.3515625; // Encoder값 갱신. 1024 Pulse를 0 - 360 deg로 바꿔줌.
+
    Encoder_deg_new = Encoder_deg_new - degree_offset;
    if (Encoder_deg_new < 0) Encoder_deg_new = Encoder_deg_new + 360;
+
    if (Encoder_deg_old - Encoder_deg_new >= 250 && (Play_the_game == 1 || (leg_num !=0 && init_bit == 0))) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
       Encoder_revcnt++; // 회전수 체크
    if (Encoder_deg_old - Encoder_deg_new <= -250 && (Play_the_game == 1 || (leg_num !=0 && init_bit == 0)))
@@ -842,12 +854,31 @@ void Encoder_value_calculation()
 
 void Moving_avg_degree()
 {
+   if (En_i < 4)
+   {
+	  E_Buff[En_i] = E_vel_deg_new; // 각도 buff 저장
+	  En_i++;
+   }
+   else if (En_i == 4)
+   {
+	  E_Buff[En_i] = E_vel_deg_new;
+	  Encoder_deg_buff = 0.2 * (E_Buff[0] + E_Buff[1] + E_Buff[2] + E_Buff[3] + E_Buff[4]); // 각도 moving avg
+	  for (i = 0; i < 4; i++)
+	  {
+	     E_Buff[i] = E_Buff[i + 1]; // 각도 buff renew
+	  }
+
+	  En_i = 4;
+   }
+
+   Encoder_deg_mvg = Encoder_deg_buff - 360 * Encoder_revcnt;
+   if(Encoder_deg_mvg < 0) Encoder_deg_mvg = Encoder_deg_mvg + 360;
+
    if (D_i < 19)
    {
       ED_Buff[D_i] = E_vel_deg_new; // 각도 buff 저장
       D_i++;
    }
-
    else if (D_i == 19)
    {
       ED_Buff[D_i] = E_vel_deg_new;
@@ -914,10 +945,15 @@ void Encoder_define() {
    ED_mva_old = ED_mva;
    EV_mva_old = EV_mva;
 
+/*   for (Encoder_cnt = 0; Encoder_cnt < 10; Encoder_cnt++) {
+	   Encoder_old[Encoder_cnt] = Encoder[Encoder_cnt];
+   }*/
+
    // Encoder Digital Input 값 받기
    Encoder_position_renew();
    Encoder_value_calculation();
    if (Play_the_game)   Moving_avg_degree();
+
    //각속도-->보행속도
    velocity = R_velocity * 0.0119;
    under_velocity = velocity * 10 - ((int)velocity) * 10;
@@ -942,7 +978,7 @@ void MetabolizeRehabilitationRobot() {
    if (Play_the_game == 1) Timer_set();
    if (gain_bit)   torque_fourier_constant(current_gain);
 
-   // MATLAB 2 -> 100Hz Bluetooth 40 -> 5Hz
+   // MATLAB 2 -> 1000Hz Bluetooth 200 -> 5Hz
    if (TimerCount == 200) {
       TimerCount = 0;
       Flash_bit = !Flash_bit;
@@ -1601,9 +1637,27 @@ void TrainAbnormalPerson() {
       mass_torque = (double)mass * 0.005 * mass_torque;
 
       Position_error = E_vel_deg_time - E_vel_deg_new;
-      if(Position_error <=0){
-    	  DegTimer = Degree_set(Encoder_deg_new);
-    	  flag2++;
+      Position_error_mvg = E_vel_deg_time - Encoder_deg_buff;
+      if(Position_error_mvg <=0){
+    	  DegTimer_old = DegTimer;
+    	  DegTimer = Degree_set(Encoder_deg_mvg);
+    	  if(DegTimer_old < DegTimer){
+   		      if ((int)(target_gain * 10) == (int)(current_gain * 10))
+   		      {
+   		         gain_bit = 1;
+   		         current_gain = target_gain;
+   		      }
+   		      else if ((int)(target_gain * 10) > (int)(current_gain * 10))
+   		      {
+   		         gain_bit = 1;
+   		         current_gain = current_gain + gain_step;
+   		      }
+   		      else if ((int)(target_gain * 10) < (int)(current_gain * 10))
+   		      {
+   		         gain_bit = 1;
+   		         current_gain = current_gain - gain_step;
+   		      }
+   		  }
       }
 
       if((Encoder_deg_new >= (torque_degree1 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree1 + torque_degree_offset)))

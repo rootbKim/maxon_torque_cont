@@ -12,7 +12,7 @@ char uart_buff[8];
 
 float32 Cpu_Clk;
 float32 Timer_Prd;
-Uint16 i = 0, M_i = 0, E_i = 0, D_i = 0;
+Uint16 i = 0, M_i = 0, E_i = 0, D_i = 0, En_i = 0;
 
 int a = 0;
 int b = 0;
@@ -34,7 +34,7 @@ double torque_interpolation = 0;
 double torque_buffer = 0;
 double mass_torque = 0;
 double torque_dynamics = 0;
-int mass = 75;
+int mass = 70;
 int stuff_position = 0;
 int stuff_position2 = 0;
 int buff_i = 0;
@@ -42,6 +42,7 @@ int stuff_i = 0;
 unsigned short decimal2hexadecimal[8] = {0, };
 
 double DegTimer = 0;
+double DegTimer_old = 0;
 double BaseDegTimer = 2.133;  // 2km/h
 double SetDegTimer = 0;
 double time_degree = 0;
@@ -52,10 +53,11 @@ double Encoder_acc_deg = 0;
 Uint32 time_Encoder_revcnt = 0;
 double E_vel_deg_time = 0;
 double Position_error = 0;
+double Position_error_mvg = 0;
 double Vel_error = 0;
 double Acc_error = 0;
-double Kp = 0.76;   // 1.5
-double Kd = 0.06;  // 0.13 // 0.075
+double Kp = 0.8;   // 1.5
+double Kd = 0.028;  // 0.13 // 0.075
 double Kv = 0.03;	// 0.03
 double Ka = 0.005;	// 0.005
 double Kp_term = 0;
@@ -66,7 +68,7 @@ double ratio_target_gain = 0;
 double ratio_gain = 0;
 double target_buff_gain = 1;
 double current_gain = 1;
-double gain_step = 0.1;
+double gain_step = 0.2;
 double velocity_mode3 = 0;
 double active_ratio_gain = 1;
 
@@ -82,9 +84,12 @@ int len=0;
 int protocol_len=14;
 int Enable_num = 1;
 
-Uint32 Encoder[10], Encoder_sum = 0, Encoder_cnt = 0;
+Uint32 Encoder[10], Encoder_old[10], Encoder_sum = 0, Encoder_cnt = 0;
 double Encoder_deg_new = 0;
-double degree_offset = 10;
+double Encoder_deg_mvg = 0;
+double Encoder_deg_mvg2 = 0;
+double Encoder_deg_buff = 0;
+double degree_offset = 15;
 double Encoder_deg_old = 0;
 double Encoder_deg = 0;
 Uint32 Encoder_revcnt = 0;
@@ -95,6 +100,7 @@ double E_vel_deg_new = 0;
 double E_vel_deg_old = 0;
 double EV_Buff[20];
 double ED_Buff[20];
+double E_Buff[5];
 int V_i=0;
 double ED_mva = 0;
 double ED_mva_old = 0;
@@ -126,13 +132,13 @@ int pause_finish = 0;
 double target_time = 0;
 
 // Mass Torque 50%
-double a0 = 53.72;
-double a1 = -0.004486;
-double b1 = -0.01114;
-double a2 = 4.221;
-double b2 = -2.455;
-double a3 = 0.0002001;
-double b3 = -0.0006445;
+double a0 = 52.7;
+double a1 = -0.004401;
+double b1 = -0.01093;
+double a2 = 4.141;
+double b2 = -2.41;
+double a3 = 0.0001963;
+double b3 = -0.0006322;
 double w = 0.01745;
 
 // Newton_1km
@@ -242,8 +248,8 @@ double aa4 = 0.3467;
 double ba4 = -0.4306;
 double wa = 0.03491;
 
-double torque_degree1 = 345;
-double torque_degree2 = 165;
+double torque_degree1 = 360;	// 345
+double torque_degree2 = 180;	//165
 double torque_degree_offset = 80;
 double torque_inflection_point = 0;
 double torque_inflection_gain = 5;
