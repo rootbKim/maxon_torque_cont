@@ -1608,100 +1608,84 @@ void TrainAbnormalPerson() {
 
    switch (mode_num) {
    case 1:
-      break_duty = 1;
-      torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
-         + b1_1 * sin(Encoder_deg_new * w_1)
-         + a2_1 * cos(2 * Encoder_deg_new * w_1)
-         + b2_1 * sin(2 * Encoder_deg_new * w_1)
-         + a3_1 * cos(3 * Encoder_deg_new * w_1)
-         + b3_1 * sin(3 * Encoder_deg_new * w_1)
-         + a4_1 * cos(4 * Encoder_deg_new * w_1)
-         + b4_1 * sin(4 * Encoder_deg_new * w_1);
-      torque_fourier_3 = a0_3 + a1_3 * cos(Encoder_deg_new * w_3)
-         + b1_3 * sin(Encoder_deg_new * w_3)
-         + a2_3 * cos(2 * Encoder_deg_new * w_3)
-         + b2_3 * sin(2 * Encoder_deg_new * w_3)
-         + a3_3 * cos(3 * Encoder_deg_new * w_3)
-         + b3_3 * sin(3 * Encoder_deg_new * w_3)
-         + a4_3 * cos(4 * Encoder_deg_new * w_3)
-         + b4_3 * sin(4 * Encoder_deg_new * w_3);
-      if (current_gain >= 1)   torque_interpolation = ((3 - current_gain) / 2) * torque_fourier_1 + ((current_gain - 1) / 2) * torque_fourier_3;
-      else if (current_gain < 1) torque_interpolation = current_gain * torque_fourier_1;
+	      break_duty = 1;
+	      torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
+	         + b1_1 * sin(Encoder_deg_new * w_1)
+	         + a2_1 * cos(2 * Encoder_deg_new * w_1)
+	         + b2_1 * sin(2 * Encoder_deg_new * w_1)
+	         + a3_1 * cos(3 * Encoder_deg_new * w_1)
+	         + b3_1 * sin(3 * Encoder_deg_new * w_1)
+	         + a4_1 * cos(4 * Encoder_deg_new * w_1)
+	         + b4_1 * sin(4 * Encoder_deg_new * w_1);
+	      torque_fourier_3 = a0_3 + a1_3 * cos(Encoder_deg_new * w_3)
+	         + b1_3 * sin(Encoder_deg_new * w_3)
+	         + a2_3 * cos(2 * Encoder_deg_new * w_3)
+	         + b2_3 * sin(2 * Encoder_deg_new * w_3)
+	         + a3_3 * cos(3 * Encoder_deg_new * w_3)
+	         + b3_3 * sin(3 * Encoder_deg_new * w_3)
+	         + a4_3 * cos(4 * Encoder_deg_new * w_3)
+	         + b4_3 * sin(4 * Encoder_deg_new * w_3);
+	      if (current_gain >= 1)   torque_interpolation = ((3 - current_gain) / 2) * torque_fourier_1 + ((current_gain - 1) / 2) * torque_fourier_3;
+	      else if (current_gain < 1) torque_interpolation = current_gain * torque_fourier_1;
 
-      mass_torque = a0 + a1 * cos(Encoder_deg_new * w)  // 최대 200kg;
-         + b1 * sin(Encoder_deg_new * w)
-         + a2 * cos(2 * Encoder_deg_new * w)
-         + b2 * sin(2 * Encoder_deg_new * w)
-         + a3 * cos(3 * Encoder_deg_new * w)
-         + b3 * sin(3 * Encoder_deg_new * w);
-      mass_torque = (double)mass * 0.005 * mass_torque;
+	      mass_torque = a0 + a1 * cos(Encoder_deg_new * w)  // 최대 200kg;
+	         + b1 * sin(Encoder_deg_new * w)
+	         + a2 * cos(2 * Encoder_deg_new * w)
+	         + b2 * sin(2 * Encoder_deg_new * w)
+	         + a3 * cos(3 * Encoder_deg_new * w)
+	         + b3 * sin(3 * Encoder_deg_new * w);
+	      mass_torque = (double)mass * 0.005 * mass_torque;
 
-      Position_error = E_vel_deg_time - E_vel_deg_new;
-      Position_error_mvg = E_vel_deg_time - Encoder_deg_buff;
-      if(Position_error_mvg <=0){
-    	  DegTimer_old = DegTimer;
-    	  DegTimer = Degree_set(Encoder_deg_mvg);
-    	  if(DegTimer_old < DegTimer){
-   		      if ((int)(target_gain * 10) == (int)(current_gain * 10))
-   		      {
-   		         gain_bit = 1;
-   		         current_gain = target_gain;
-   		      }
-   		      else if ((int)(target_gain * 10) > (int)(current_gain * 10))
-   		      {
-   		         gain_bit = 1;
-   		         current_gain = current_gain + gain_step;
-   		      }
-   		      else if ((int)(target_gain * 10) < (int)(current_gain * 10))
-   		      {
-   		         gain_bit = 1;
-   		         current_gain = current_gain - gain_step;
-   		      }
-   		  }
-      }
+	      Position_error = E_vel_deg_time - E_vel_deg_new;
+	      if(Position_error <=0){
+	    	  DegTimer_old = DegTimer;
+	    	  DegTimer = Degree_set(Encoder_deg_new);
+	      }
 
-      if((Encoder_deg_new >= (torque_degree1 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree1 + torque_degree_offset)))
-      {
-         theta = (Encoder_deg_new - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
-         Radian = theta * 3.141592 / 180;
-         torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
-      }
-      else if(Encoder_deg_new <= (torque_degree1 + torque_degree_offset) - 360)
-      {
-         theta = (Encoder_deg_new + 360 - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
-         Radian = theta * 3.141592 / 180;
-         torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
-      }
-      else if((Encoder_deg_new >= (torque_degree2 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree2 + torque_degree_offset)))
-      {
-         theta = (Encoder_deg_new - (torque_degree2 - torque_degree_offset)) * (180 / torque_degree_offset);
-         Radian = theta * 3.141592 / 180;
-         torque_inflection_point = torque_inflection_gain * current_gain * (1 - cos(Radian));
-      }
-      else
-      {
-         theta = 0;
-         Radian = 0;
-         torque_inflection_point = 0;
-      }
+	      if((Encoder_deg_new >= (torque_degree1 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree1 + torque_degree_offset)))
+	      {
+	         theta = (Encoder_deg_new - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
+	         Radian = theta * 3.141592 / 180;
+	         torque_inflection_point = torque_inflection_gain * current_gain * current_gain * (1 - cos(Radian));
+	      }
+	      else if(Encoder_deg_new <= (torque_degree1 + torque_degree_offset) - 360)
+	      {
+	         theta = (Encoder_deg_new + 360 - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
+	         Radian = theta * 3.141592 / 180;
+	         torque_inflection_point = torque_inflection_gain * current_gain * current_gain * (1 - cos(Radian));
+	      }
+	      else if((Encoder_deg_new >= (torque_degree2 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree2 + torque_degree_offset)))
+	      {
+	         theta = (Encoder_deg_new - (torque_degree2 - torque_degree_offset)) * (180 / torque_degree_offset);
+	         Radian = theta * 3.141592 / 180;
+	         torque_inflection_point = torque_inflection_gain * current_gain * current_gain * (1 - cos(Radian));
+	      }
+	      else
+	      {
+	         theta = 0;
+	         Radian = 0;
+	         torque_inflection_point = 0;
+	      }
 
-      torque_dynamics = torque_interpolation * torque_scale + mass_torque;
+	      torque_buffer = torque_interpolation + torque_inflection_point + mass_torque + Kp * Position_error - Kd * Encoder_vel;
 
-      torque_buffer = torque_dynamics + torque_inflection_point + Kp * Position_error - Kd * Encoder_vel;
-      Kp_term = Kp * Position_error;
-      Kd_term = Kd * Encoder_vel;
-      torque = torque_buffer * 1000;
-      if (torque <= 0)
-         torque = 0;
-      if (torque >= 70000)
-      {
-         torque = 69900;
-      }
+	      Kp_term = Kp * Position_error;
+	      Kd_term = Kd * Encoder_vel;
 
-      torque = torque / gear_ratio; // 감속비 60
-      torque = (torque / max_motor_torque);   // 모터 정격 토크 = 0.75
-      Torque_Calculate();
-      ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
+	      torque = torque_buffer * 1000;
+	      if (torque <= 0)
+	         torque = 0;
+	      if (torque >= (60000 - torque_offset))
+	      {
+	         torque = (60000 - torque_offset - 100);
+	      }
+
+	      torque_motor = (torque + torque_offset) / gear_ratio / 0.8; // 감속비 60, 감속기 효율 0.8
+	      torque_maxon = (torque_motor / max_motor_torque);   // 모터 정격 토크 = 0.75
+
+	      Torque_Calculate();
+	      ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
+
 
       break;
 
@@ -1787,8 +1771,7 @@ void TrainAbnormalPerson() {
          torque_inflection_point = 0;
       }
 
-//      torque_dynamics = torque_interpolation * torque_scale + mass_torque * ratio_gain;
-      torque_dynamics = torque_interpolation * torque_scale + mass_torque;
+      torque_dynamics = torque_interpolation + mass_torque;
       if(flag == 1)
       {
           torque_intention = 0;
@@ -1877,7 +1860,7 @@ void TrainAbnormalPerson() {
          torque_inflection_point = 0;
       }
 
-      torque_dynamics = torque_interpolation * torque_scale;
+      torque_dynamics = torque_interpolation;
 
       torque_buffer = (torque_dynamics + torque_inflection_point) * active_ratio_gain;
 
