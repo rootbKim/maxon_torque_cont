@@ -31,13 +31,15 @@ long long vel = 0;
 double max_motor_torque = 0.75;
 
 unsigned int gear_ratio = 60;
+double ratio = 0.7;	//0.8
+double tmp = 0.2;	//1.0
 double torque_fourier_1 = 0;   // 1km/h fourier
 double torque_fourier_3 = 0;   // 3km/h fourier
 double torque_interpolation = 0;
 double torque_buffer = 0;
 double mass_torque = 0;
 double torque_dynamics = 0;
-int mass = 70;
+int mass = 65.5;
 int stuff_position = 0;
 int stuff_position2 = 0;
 int buff_i = 0;
@@ -61,8 +63,8 @@ double Vel_error = 0;
 double Acc_error = 0;
 double Kp = 0.7;   // 1.5
 double Kd = 0.008;  // 0.13 // 0.075
-double Kv = 0.03;	// 0.03
-double Ka = 0.005;	// 0.005
+double Kv = 0.003;	// 하지: 0.02
+double Ka = 0.001;	// 하지: 0.003
 double Kp_term = 0;
 double Kd_term = 0;
 
@@ -73,6 +75,7 @@ double target_buff_gain = 1;
 double current_gain = 1;
 double gain_step = 0.2;
 double velocity_mode3 = 0;
+double active_vel = 0;
 double active_ratio_gain = 1;
 
 extern Uint16 RamfuncsLoadStart;
@@ -134,14 +137,14 @@ double target_dis = 0;
 int pause_finish = 0;
 double target_time = 0;
 
-// Mass Torque 50%
-double a0 = 52.7;
-double a1 = -0.004401;
-double b1 = -0.01093;
-double a2 = 4.141;
-double b2 = -2.41;
-double a3 = 0.0001963;
-double b3 = -0.0006322;
+// Mass Torque 120kg, 5%
+double a0 = 31.62;
+double a1 = -0.00264;
+double b1 = -0.006556;
+double a2 = 2.485;
+double b2 = -1.445;
+double a3 = 0.0001177;
+double b3 = -0.0003793;
 double w = 0.01745;
 
 // Newton_1km
@@ -255,7 +258,7 @@ double torque_degree1 = 345;	// 345
 double torque_degree2 = 165;	//165
 double torque_degree_offset = 80;
 double torque_inflection_point = 0;
-double torque_inflection_gain = 0.4;
+double torque_inflection_gain = 0.6;	//0.2
 double theta = 0;
 double Radian = 0;
 double torque_intention = 0;
