@@ -1,7 +1,7 @@
 ******************************************************************************
              TMS320C2000 Linker PC v15.12.3                    
 ******************************************************************************
->> Linked Thu Dec 10 13:59:49 2020
+>> Linked Fri Dec 11 18:00:55 2020
 
 OUTPUT FILE NAME:   <maxon_torque_cont.out>
 ENTRY POINT SYMBOL: "_c_int00"  address: 0033ac76
@@ -13,7 +13,7 @@ MEMORY CONFIGURATION
 ----------------------  --------  ---------  --------  --------  ----  --------
 PAGE 0:
   ZONE0                 00004000   00001000  00000000  00001000  RWIX
-  RAML0                 00008000   00001000  00000fc0  00000040  RWIX
+  RAML0                 00008000   00001000  00000fb6  0000004a  RWIX
   RAML1                 00009000   00001000  00000000  00001000  RWIX
   RAML2                 0000a000   00001000  00000000  00001000  RWIX
   RAML3                 0000b000   00001000  00000000  00001000  RWIX
@@ -23,7 +23,7 @@ PAGE 0:
   FLASHG                00308000   00008000  00000000  00008000  RWIX
   FLASHF                00310000   00008000  00000000  00008000  RWIX
   FLASHE                00318000   00008000  00000000  00008000  RWIX
-  FLASHD                00320000   00008000  00000fc0  00007040  RWIX
+  FLASHD                00320000   00008000  00000fb6  0000704a  RWIX
   FLASHC                00328000   00008000  00000000  00008000  RWIX
   FLASHA                00338000   00007f80  00003859  00004727  RWIX
   CSM_RSVD              0033ff80   00000076  00000076  00000000  RWIX
@@ -105,10 +105,10 @@ SECTION ALLOCATION MAP
  output                                  attributes/
 section   page    origin      length       input sections
 --------  ----  ----------  ----------   ----------------
-ramfuncs   0    00320000    00000fc0     RUN ADDR = 00008000
-                  00320000    00000fa1     main.obj (ramfuncs)
-                  00320fa1    0000001b     DSP2833x_SysCtrl.obj (ramfuncs)
-                  00320fbc    00000004     DSP2833x_usDelay.obj (ramfuncs)
+ramfuncs   0    00320000    00000fb6     RUN ADDR = 00008000
+                  00320000    00000f97     main.obj (ramfuncs)
+                  00320f97    0000001b     DSP2833x_SysCtrl.obj (ramfuncs)
+                  00320fb2    00000004     DSP2833x_usDelay.obj (ramfuncs)
 
 .text      0    00338000    000030c0     
                   00338000    0000113f     main.obj (.text)
@@ -430,7 +430,7 @@ MODULE SUMMARY
        Module                            code    ro data   rw data
        ------                            ----    -------   -------
     .\
-       main.obj                          13243   0         2455   
+       main.obj                          13223   0         2455   
        DSP2833x_GlobalVariableDefs.obj   0       0         2679   
        DSP2833x_DefaultIsr.obj           790     0         0      
        DSP2833x_SysCtrl.obj              302     0         0      
@@ -448,7 +448,7 @@ MODULE SUMMARY
        DSP2833x_DisInt.obj               7       0         0      
        DSP2833x_DBGIER.obj               3       0         0      
     +--+---------------------------------+-------+---------+---------+
-       Total:                            14972   0         5540   
+       Total:                            14952   0         5540   
                                                                   
     C:\ti\ccsv6\tools\compiler\c2000_15.12.3.LTS\lib\rts2800_fpu32.lib
        _printfi.obj                      3033    0         66     
@@ -504,7 +504,7 @@ MODULE SUMMARY
                                                                   
        Stack:                            0       0         768    
     +--+---------------------------------+-------+---------+---------+
-       Grand Total:                      20553   0         6738   
+       Grand Total:                      20533   0         6738   
 
 
 GLOBAL DATA SYMBOLS: SORTED BY DATA PAGE
@@ -969,7 +969,7 @@ page  address   name
 0     0033a28d  _DINTCH6_ISR                    
 0     0033b0ab  _DSP28x_DisableInt              
 0     0033b0af  _DSP28x_RestoreInt              
-0     00008fbc  _DSP28x_usDelay                 
+0     00008fb2  _DSP28x_usDelay                 
 1     0000c00d  _D_i                            
 1     0000c150  _DegTimer                       
 1     0000c13c  _DegTimer_old                   
@@ -1085,7 +1085,7 @@ page  address   name
 0     0033a6f0  _InitEPwm6Gpio                  
 0     0033a685  _InitEPwmGpio                   
 0     0033a702  _InitEPwmSyncGpio               
-0     00008fa1  _InitFlash                      
+0     00008f97  _InitFlash                      
 0     0033a5f8  _InitPeripheralClocks           
 0     0033ae20  _InitPieCtrl                    
 0     0033aed3  _InitPieVectTable               
@@ -1139,7 +1139,7 @@ page  address   name
 0     0033a071  _RTOSINT_ISR                    
 1     0000c160  _R_velocity                     
 1     0000c0b8  _Radian                         
-0     00320fc0  _RamfuncsLoadEnd                
+0     00320fb6  _RamfuncsLoadEnd                
 0     00320000  _RamfuncsLoadStart              
 0     00008000  _RamfuncsRunStart               
 1     0000c013  _Receivedbuff                   
@@ -1195,7 +1195,7 @@ page  address   name
 0     0033a0e9  _USER9_ISR                      
 1     0000c340  _UT                             
 0     00008040  _Uart_transmit                  
-0     00008f41  _UpdateInformation              
+0     00008f37  _UpdateInformation              
 1     0000c018  _V_i                            
 0     00338e04  _Vel_Calculate                  
 0     00338c17  _Vel_Set                        
@@ -1491,11 +1491,11 @@ page  address   name
 0     00008040  _Uart_transmit                  
 0     000080b2  _Encoder_define                 
 0     00008113  _TrainAbnormalPerson            
-0     00008f41  _UpdateInformation              
-0     00008fa1  _InitFlash                      
-0     00008fbc  _DSP28x_usDelay                 
+0     00008f37  _UpdateInformation              
+0     00008f97  _InitFlash                      
+0     00008fb2  _DSP28x_usDelay                 
 0     00320000  _RamfuncsLoadStart              
-0     00320fc0  _RamfuncsLoadEnd                
+0     00320fb6  _RamfuncsLoadEnd                
 0     00338000  .text                           
 0     00338000  ___text__                       
 0     00338000  _main                           

@@ -157,9 +157,9 @@ void main(void) {
 //함수시작
 void Reg_setting_fun() {
    EALLOW;
-   PieVectTable.TINT0 = &cpu_timer0_isr;
-   PieVectTable.SCIRXINTA = &sciaRxFifoIsr;
-   PieVectTable.SCITXINTC = &scicTxFifoIsr;
+   PieVectTable.TINT0 = &cpu_timer0_isr;	// Timer Interrupt. 메인 인터럽트
+   PieVectTable.SCIRXINTA = &sciaRxFifoIsr;	// 테블릿으로부터 명령 받아오는 시리얼 통신 인터럽트
+   PieVectTable.SCITXINTC = &scicTxFifoIsr;	// 맥슨모터드라이버에 명령을 보내는 시리얼 통신 인터럽트
    SysCtrlRegs.HISPCP.bit.HSPCLK = 1;
 
    //엔코더 입력 핀 사용 설정
@@ -193,29 +193,34 @@ void Reg_setting_fun() {
    EDIS;
 }
 
+// 발판 위치 초기화 시 속도제어로 전환하여 초기화 실행
 void Initialize_motor()
 {
+	// init_flag 를 둔 이유는, 통신 주기를 느리게 하여 원할한 통신을 할 수 있도록 함.
+	// init_flag가 1이거나, 한번에 진행되면 통신이 되지 않아, 속도제어 모드로 안넘어갈 수도 있음.
    if(init_flag<=2)
    {
 	   vel = 400;
-	   MAXON_PVM_Set();
+	   MAXON_PVM_Set();	// 속도제어 모드로 변환, 속도: 400
 	   init_flag++;
    }
    else if(init_flag<=4)
    {
-	   Vel_Calculate();
+	   Vel_Calculate();	// 속도값을 프로토콜에 맞게 변환
 	   init_flag++;
    }
    else if(init_flag<=6)
    {
-	   Vel_Set();
+	   Vel_Set();		// 속도값 입력
 	   init_flag++;
    }
    else init_flag = 0;
 }
 
+// 로봇 발판 초기화 이후, 각 parameter 값들 초기화
 void Initialize_motor_variable()
 {
+	// 각각 환측 다리가 왼발, 오른발일 때, PD제어를 위한 초기 시간을 설정
    if(leg_num == 1) DegTimer = 0.7798;
    if(leg_num == 2) DegTimer = 2.8527;
    torque = 0;
@@ -243,21 +248,23 @@ void Initialize_motor_variable()
    for (i = 0; i < 20; i++) ED_Buff[i] = 0;
 }
 
+// 로봇 발판 초기화 함수
 int Robot_Initialize() {
+	// 두 개의 break_bit가 모두 다음 조건을 만족하면 휴식 타이머를 시작함
    if (break_bit1 == 1 && break_bit2 == 0)
    {
-      break_time();
+      break_time(); // 휴식 시간 시작
    }
 
    //환측다리=오른발이면
    if (leg_num == 1) {
       if (!init_bit) {
-         if (Encoder_deg_new >= 48 && Encoder_deg_new <= 55) {
+         if (Encoder_deg_new >= 48 && Encoder_deg_new <= 55) {	// 해당 각도에 도달하면 브레이크 on
             break_duty = 0;
-            velocity = 0;
+            velocity = 0;	// 맥슨모터 드라이버에 속도 0 입력
             init_bit = 1;
-            MAXON_CST_Set();
-            Initialize_motor_variable();
+            MAXON_CST_Set();	// CST 모드로 전환
+            Initialize_motor_variable();	// parameter 초기화
 
             if(pause_finish == 0)   Play_the_game = 0;
             if (pause_finish == 0 && pause_bit)
@@ -267,7 +274,7 @@ int Robot_Initialize() {
          else
          {
              break_duty = 1;   //브레이크 OFF
-             Initialize_motor();
+             Initialize_motor();	// 속도 모드로 발판위치 초기화
              return 0;
          }
       }
@@ -276,12 +283,12 @@ int Robot_Initialize() {
    //왼발이면
    else if (leg_num == 2) {
       if (!init_bit) {
-         if (Encoder_deg_new >= 228 && Encoder_deg_new <= 235) {
+         if (Encoder_deg_new >= 228 && Encoder_deg_new <= 235) {	// 해당 각도에 도달하면 브레이크 on
             break_duty = 0;
-            velocity = 0;
+            velocity = 0;	// 맥슨모터 드라이버에 속도 0 입력
             init_bit = 1;
-            MAXON_CST_Set();
-            Initialize_motor_variable();
+            MAXON_CST_Set();	// CST 모드로 전환
+            Initialize_motor_variable();	// parameter 초기화
 
             if(pause_finish == 0)   Play_the_game = 0;
             if (pause_finish == 0 && pause_bit)
@@ -291,7 +298,7 @@ int Robot_Initialize() {
          else
          {
              break_duty = 1;   //브레이크 OFF
-             Initialize_motor();
+             Initialize_motor();	// 속도 모드로 발판위치 초기화
              return 0;
          }
       }
@@ -518,7 +525,7 @@ void UART_Put_String(char* Uart_string) {
    }
 }
 
-void BT_transmit() {
+void BT_transmit() {	// 스마트 탭에 보내는 데이터
       sprintf(BT, "!s%d.%dt%d%d%d%dd%d%d%d%d?\n\0",
             (int) velocity, (int) under_velocity,
             time_now_min_10, time_now_min_1, time_now_sec_10, time_now_sec_1,
@@ -527,7 +534,7 @@ void BT_transmit() {
       BT_Put_String(BT);
 }
 
-void Uart_transmit() {
+void Uart_transmit() {	// 실험 TEST를 위한 DATA 추출용, 실제 알고리즘에 영향 없음
    //   sprintf(UT, "%ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld, %ld\n\0", (long) (10000 * torque), (long) (10000 * torque_interpolation), (long) (10000 * torque_buffer), (long) (10000 * Position_error), (long) (10000 * Encoder_deg_time), (long) (10000 * Encoder_deg_new), (long) (10000 * time_Encoder_revcnt), (long) (10000 * Encoder_revcnt), (long) (10000 * Kp), (long) (10000 * velocity));
    //	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque_buffer), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long) (10000 * Encoder_deg_time), (long long) (10000 * Encoder_revcnt), (long long) (10000 * time_Encoder_revcnt), (long long) (100 * velocity), (long long) (10000 * torque_inflection_point), (long long) (10000 * Kp_term), (long long) (10000 * Kd_term));
    //	sprintf(UT, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld, %lld\n\0", (long long) (10000 * torque), (long long) (10000 * torque_buffer), (long long) (10000 * torque_interpolation), (long long) (10000 * mass_torque), (long long)(10000 * Encoder_deg_new), (long long) (100 * velocity), (long long) (10000 * torque_inflection_point), (long long) (10000 * Vel_error), (long long) (10000 * Acc_error), (long long) (10000 * Encoder_acc), (long long) (10000 * Encoder_acc_deg));
@@ -554,7 +561,7 @@ interrupt void scicTxFifoIsr(void) {
 
 }
 /*
-// 응답 코드 확인
+// 맥슨모터에서 보내는 응답 코드 확인용 -> 통신이 잘 되는지 확인하기 위함. 실제 알고리즘 구동에 영향 없음.
 interrupt void scicRxFifoIsr(void) {
 
    Receivedbuff2 = ScicRegs.SCIRXBUF.bit.RXDT;
@@ -650,6 +657,7 @@ interrupt void scicRxFifoIsr(void) {
    PieCtrlRegs.PIEACK.all = PIEACK_GROUP8;      // Acknowledge interrupt to PIE
 }
 */
+// 스마트 탭에서 보내는 통신 프로토콜에 따른 데이터 통신
 interrupt void sciaRxFifoIsr(void) {
 
    Receivedbuff = SciaRegs.SCIRXBUF.bit.RXDT;
@@ -817,7 +825,7 @@ interrupt void sciaRxFifoIsr(void) {
    PieCtrlRegs.PIEACK.all = PIEACK_GROUP9;      // Acknowledge interrupt to PIE
 
 }
-// LCD 없이 모터제어를 위한 통신프로토콜
+// 엔코더 데이터값 입력 - 1024 분해능
 void Encoder_position_renew() {
    Encoder[0] = GpioDataRegs.GPADAT.bit.GPIO5;
    Encoder[1] = GpioDataRegs.GPBDAT.bit.GPIO37;
@@ -831,6 +839,7 @@ void Encoder_position_renew() {
    Encoder[9] = GpioDataRegs.GPADAT.bit.GPIO11;
 }
 
+// encoder 값 계산하기 위함
 void Encoder_value_calculation()
 {
    Encoder_sum = 0;
@@ -843,24 +852,33 @@ void Encoder_value_calculation()
    	   }
    }
 */
+   // 10개의 encoder binary 값 계산
    for (Encoder_cnt = 0; Encoder_cnt < 10; Encoder_cnt++) {
       Encoder_sum += Encoder[Encoder_cnt] << Encoder_cnt; // Encoder_sum 은 0-1024 Pulse까지의 수를 Count해줌.
    }
 
+   // encoder 방향이 반대방향이므로, encoder 값을 반대방향으로 변환
    Encoder_deg_new = 360 - (double)Encoder_sum * 0.3515625; // Encoder값 갱신. 1024 Pulse를 0 - 360 deg로 바꿔줌.
 
+   // 링크의 0도를 맞추기 위해, degree_offset을 이용해 기준 0도를 맞추기 위함
    Encoder_deg_new = Encoder_deg_new - degree_offset;
    if (Encoder_deg_new < 0) Encoder_deg_new = Encoder_deg_new + 360;
 
+   // 훈련이 시작 한 이후부터 회전값 측정
    if (Encoder_deg_old - Encoder_deg_new >= 250 && (Play_the_game == 1 || (leg_num !=0 && init_bit == 0))) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
       Encoder_revcnt++; // 회전수 체크
+   // 노이즈로 인해 역방향 회전으로 인식하게 될 경우에 역방향 회전도 카운트.
+   // 역방향 회전을 카운트 안하면, 양의 회전 방향만 카운트 하기 때문에 노이즈로 인해 실제 회전수 보다 양의 회전 방향이 크게 증가할 수 있음.
    if (Encoder_deg_old - Encoder_deg_new <= -250 && (Play_the_game == 1 || (leg_num !=0 && init_bit == 0)))
       Encoder_revcnt--;
 
+   // 전체 회전 각도 계산
    E_vel_deg_new = Encoder_revcnt * 360 + Encoder_deg_new;
+   // 전체 직선 보행 거리 계산, 보폭 1190mm
    move_dis = 0.001 * E_vel_deg_new * 1190 / 360; // m단위
 }
 
+// 각속도, 각가속도를 구하기 위한 무빙에버리지
 void Moving_avg_degree()
 {
    if (En_i < 4)
@@ -888,7 +906,7 @@ void Moving_avg_degree()
       ED_Buff[D_i] = E_vel_deg_new; // 각도 buff 저장
       D_i++;
    }
-   else if (D_i == 19)
+   else if (D_i == 19)	// 20개의 데이터 평균
    {
       ED_Buff[D_i] = E_vel_deg_new;
       ED_mva = 0.05 * (ED_Buff[0] + ED_Buff[1] + ED_Buff[2] + ED_Buff[3] + ED_Buff[4] + ED_Buff[5] + ED_Buff[6] + ED_Buff[7] + ED_Buff[8] + ED_Buff[9] +
@@ -909,7 +927,7 @@ void Moving_avg_degree()
       E_i++;
    }
 
-   else if (E_i == 19)
+   else if (E_i == 19)	// 20개 데이터 평균
    {
       EV_Buff[E_i] = Encoder_vel;
       EV_mva = 0.05 * (EV_Buff[0] + EV_Buff[1] + EV_Buff[2] + EV_Buff[3] + EV_Buff[4] + EV_Buff[5] + EV_Buff[6] + EV_Buff[7] + EV_Buff[8] + EV_Buff[9] +
@@ -924,30 +942,35 @@ void Moving_avg_degree()
 
    Encoder_acc = (EV_mva - EV_mva_old) * 100;
 
+   // 역방향 회전하는 경우 flag 증가
    if (Encoder_deg_old - Encoder_deg_new <= -250)
    {
       velocity_flag++;
    }
+   // 한바퀴 회전한 경우
    if (Encoder_deg_old - Encoder_deg_new >= 250)
    {
+	  // 만약 역방향 회전한 경우가 있으면, 즉 노이즈 때문에 한바퀴 회전이라고 인식한 경우
       if (velocity_flag >= 1)
       {
          velocity_flag = 0;
       }
-      else
+      else	// 노이즈로 인한 경우가 아니라면
       {
-         R_velocity = tablet_velocity / (double)(V_i);
+         R_velocity = tablet_velocity / (double)(V_i);	// 평균 크랭크축의 회전 속도 계산
          tablet_velocity = 0;
          V_i = 0;
       }
    }
+   // 엔코더 값이 갱신되는 경우, 평균속도를 구하기 위한 값의 갯수와 각속도 데이터를 저장
    if (Encoder_deg_new > Encoder_deg_old + 0.1)
    {
-      tablet_velocity += (Encoder_vel);
-      V_i++;
+      tablet_velocity += (Encoder_vel);	// 한 주기 동안의 각속도 데이터의 합
+      V_i++;	// 총 데이터의 갯수
    }
 }
 
+// encoder값 처리 함수
 void Encoder_define() {
    Encoder_deg_old = Encoder_deg_new; // 이전 Encoder값을 저장
    E_vel_deg_old = E_vel_deg_new;
@@ -961,17 +984,18 @@ void Encoder_define() {
    // Encoder Digital Input 값 받기
    Encoder_position_renew();
    Encoder_value_calculation();
-   if (Play_the_game)   Moving_avg_degree();
+   if (Play_the_game)   Moving_avg_degree();	// 훈련이 시작되면 엔코더값 무빙에버리지
 
    //각속도-->보행속도
    velocity = R_velocity * 0.0119;
-   under_velocity = velocity * 10 - ((int)velocity) * 10;
-   active_vel = Encoder_vel * 0.0119 * 0.5;
+   under_velocity = velocity * 10 - ((int)velocity) * 10;	// 10^-1 자리 추출(테블릿 PC에 전송하기 위한 데이터 추출)
+   active_vel = Encoder_vel * 0.0119 * 0.5;	// active 모드에서 실제 훈련 속도를 측정하기 위함(보정을 위해 절반 정도의 기구 모션 실시)
 
-   if(active_vel <= 1) active_vel = 1;
+   if(active_vel <= 1) active_vel = 1;	// active 모드의 실제 훈련속도가 1~3이 나오도록 설정
    else if(active_vel >= 3) active_vel = 3;
 }
 
+// 통신 및 encoder 계산하기 위한 함수
 void MetabolizeRehabilitationRobot() {
 
    ++TimerCount;
@@ -981,22 +1005,22 @@ void MetabolizeRehabilitationRobot() {
    if (TimerCount1 == 10)
    {
       TimerCount1 = 0;
-      Encoder_define();
-      if (start_bit && (!end_bit))
+      Encoder_define();	// encoder 확인
+      if (start_bit && (!end_bit))	// 훈련을 시작하면, 추출용 데이터 전송
       {
     	  if (Play_the_game) Uart_transmit();
       }
    }
 
-   if (Play_the_game == 1) Timer_set();
-   if (gain_bit)   torque_fourier_constant(current_gain);
+   if (Play_the_game == 1) Timer_set();	// passive 모드의 pd 제어를 하기 위한 시간 계산
+   if (gain_bit)   torque_fourier_constant(current_gain);	// 설정된 보행속도의 프로파일을 만들기 위한 파라미터 계산 함수
 
    // MATLAB 2 -> 1000Hz Bluetooth 200 -> 5Hz
    if (TimerCount == 200) {
       TimerCount = 0;
       Flash_bit = !Flash_bit;
 
-      GpioDataRegs.GPBDAT.bit.GPIO48 = Flash_bit;
+      GpioDataRegs.GPBDAT.bit.GPIO48 = Flash_bit;	// 로봇 동작 확인용 led 점멸
       if (start_bit && (!end_bit))
          if (Play_the_game) {
             BT_transmit();
@@ -1005,10 +1029,13 @@ void MetabolizeRehabilitationRobot() {
    }
 }
 
+// pd 제어시 참조 프로파일을 만들기 위한 시간을 만들어주는 함수.
 void Timer_set() {
 
+	// 시간 증가. 0.001 단위
    DegTimer = DegTimer + 0.001;
 
+   // 설정된 파라미터를 통해 계산된 참조 프로파일
    Encoder_deg_time = ae0 + ae1 * cos(DegTimer * we)
       + be1 * sin(DegTimer * we)
       + ae2 * cos(2 * DegTimer * we)
@@ -1026,6 +1053,7 @@ void Timer_set() {
       + ae8 * cos(8 * DegTimer * we)
       + be8 * sin(8 * DegTimer * we);
 
+   // 목표 속도와 현재 보행 속도를 비교하여 현재 보행 속도를 증감시킴. 최종 버전에서는 사용 안함.
    if (DegTimer >= SetDegTimer)
    {
       DegTimer = 0;
@@ -1046,14 +1074,18 @@ void Timer_set() {
       }
    }
 
+   // 참조 프로파일이 360를 넘어간 경우 참조프로파일의 회전수 체크
    if (Encoder_deg_time_old - Encoder_deg_time >= 250) // 각속도 구할 때 갑자기 100도이상 차이나면 360 -> 0 도로 된것을 알아내는 조건
       time_Encoder_revcnt++; // 회전수 체크
 
+   // 참조 프로파일의 전체 각도 계산
    E_vel_deg_time = time_Encoder_revcnt * 360 + Encoder_deg_time;
    Encoder_deg_time_old = Encoder_deg_time;
 
 }
 
+// 현재 각도가 참조 프로파일보다 더 앞서갔을 때, 참조프로파일을 변화시키기 위함
+// 참조 프로파일을 변화시키지 않으면, 보행에 부자연스러움 발생
 double Degree_set(double degree)
 {
 	   time_degree = at0 + at1 * cos(degree * wt)
@@ -1075,6 +1107,8 @@ double Degree_set(double degree)
 
 	   return time_degree;
 }
+
+// 설정된 보행속도의 프로파일을 만들기 위한 파라미터 계산 함수
 void torque_fourier_constant(double current_gain)
 {
    int current_num = current_gain * 10;
@@ -1103,6 +1137,7 @@ void torque_fourier_constant(double current_gain)
    bt8 = bt8_base * base_num2;
 }
 
+// 블루투스 연결 확인용. 블루투스 연결 시 해당 파라미터를 받아옴.
 int ConnectBluetooth() {
    if (leg_num == 1 || leg_num == 2)
       return 1;
@@ -1155,6 +1190,7 @@ void Motor_Enable2()
    }
 }
 
+// 속도 세팅
 void Vel_Set()
 {
    uart[0] = 0x90;
@@ -1173,6 +1209,8 @@ void Vel_Set()
     uart[13] = 0x07;
     ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 }
+
+// PVM 모드 세팅
 void MAXON_PVM_Set()
 {
       uart[0] = 0x90;
@@ -1192,6 +1230,7 @@ void MAXON_PVM_Set()
       ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 }
 
+// CST 모드 세팅
 void MAXON_CST_Set()
 {
       uart[0] = 0x90;
@@ -1210,18 +1249,18 @@ void MAXON_CST_Set()
       uart[13] = 0x97;
       ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 }
-// 토크 값 변환 및 CRC 계산
+// 토크 값 변환 및 CRC 계산. 맥슨모터 데이터 시트 기반
 void Torque_Calculate()
 {
-   unsigned short* hexadecimal = decimal2hex(torque_maxon);
-   unsigned short DataArray[6];
+   unsigned short* hexadecimal = decimal2hex(torque_maxon);	// 10진수를 16진수로 변환
+   unsigned short DataArray[6];	// 변수 값 저장용
    unsigned short CRC = 0;
 
    protocol_len = 14;
-
+   // 양의 토크일 때
    if (torque_maxon >= 0)
    {
-      uart[0] = 0x90;
+      uart[0] = 0x90;	// 토크 명령 프로토콜
       uart[1] = 0x02;
       uart[2] = 0x68;
       uart[3] = 0x04;
@@ -1240,12 +1279,12 @@ void Torque_Calculate()
       DataArray[3] = (uart[9] << 8) + uart[8];
       DataArray[4] = (uart[11] << 8) + uart[10];
       DataArray[5] = 0x0000;
-
+      // CRC 계산
       CRC = CalcFieldCRC(DataArray, 6);
 
       uart[12] = (CRC & 0xff);
       uart[13] = (CRC & 0xff00) >> 8;
-
+      // stuffing
       if (uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90 || uart[12] == 0x90 || uart[13] == 0x90)
       {
          for (stuff_i = 8; stuff_i < 14; stuff_i++)
@@ -1282,9 +1321,9 @@ void Torque_Calculate()
          buff_i = 0;
       }
    }
-   else if (torque_maxon < 0)
+   else if (torque_maxon < 0)	// 음의 토크일 때
    {
-      uart[0] = 0x90;
+      uart[0] = 0x90;	// 토크 명령 프로토콜
       uart[1] = 0x02;
       uart[2] = 0x68;
       uart[3] = 0x04;
@@ -1308,7 +1347,7 @@ void Torque_Calculate()
 
       uart[12] = (CRC & 0xff);
       uart[13] = (CRC & 0xff00) >> 8;
-
+      // stuffing
       if (uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90 || uart[12] == 0x90 || uart[13] == 0x90)
       {
          for (stuff_i = 8; stuff_i < 14; stuff_i++)
@@ -1344,7 +1383,7 @@ void Torque_Calculate()
       }
    }
 }
-
+// 속도 값 변환
 void Vel_Calculate()
 {
    unsigned short* hexadecimal = decimal2hex(vel);
@@ -1355,7 +1394,7 @@ void Vel_Calculate()
 
    if (vel >= 0)
    {
-      uart[0] = 0x90;
+      uart[0] = 0x90;	// 속도 명령 프로토콜
       uart[1] = 0x02;
       uart[2] = 0x68;
       uart[3] = 0x04;
@@ -1374,12 +1413,12 @@ void Vel_Calculate()
       DataArray[3] = (uart[9] << 8) + uart[8];
       DataArray[4] = (uart[11] << 8) + uart[10];
       DataArray[5] = 0x0000;
-
+      // CRC 계산
       CRC = CalcFieldCRC(DataArray, 6);
 
       uart[12] = (CRC & 0xff);
       uart[13] = (CRC & 0xff00) >> 8;
-
+      // stuffing
       if (uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90 || uart[12] == 0x90 || uart[13] == 0x90)
       {
          for (stuff_i = 8; stuff_i < 14; stuff_i++)
@@ -1418,7 +1457,7 @@ void Vel_Calculate()
    }
    else if (torque < 0)
    {
-      uart[0] = 0x90;
+      uart[0] = 0x90;	// 속도 명령 프로토콜
       uart[1] = 0x02;
       uart[2] = 0x68;
       uart[3] = 0x04;
@@ -1437,12 +1476,12 @@ void Vel_Calculate()
       DataArray[3] = (uart[9] << 8) + uart[8];
       DataArray[4] = (uart[11] << 8) + uart[10];
       DataArray[5] = 0x0000;
-
+      // CRC 계산
       CRC = CalcFieldCRC(DataArray, 6);
 
       uart[12] = (CRC & 0xff);
       uart[13] = (CRC & 0xff00) >> 8;
-
+      // stuffing 계산
       if (uart[8] == 0x90 || uart[9] == 0x90 || uart[10] == 0x90 || uart[11] == 0x90 || uart[12] == 0x90 || uart[13] == 0x90)
       {
          for (stuff_i = 8; stuff_i < 14; stuff_i++)
@@ -1531,7 +1570,7 @@ unsigned short CalcFieldCRC(unsigned short* pDataArray, unsigned short ArrayLeng
 
    return CRC;
 }
-
+// break pwm 생성 함수
 void OutputPWM() {
    if (break_duty >= 1)
       break_duty = 1;
@@ -1544,7 +1583,7 @@ void OutputPWM() {
 
    PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;   // Acknowledge interrupt to PIE
 }
-
+// 속도를 0으로 만들어 초기화를 멈추고, CST 모드로 전환
 int IsStart() {
 
   if(init_flag2<=2)
@@ -1567,13 +1606,13 @@ int IsStart() {
 
   return start_bit;
 }
-
+// 보행 훈련 중 일시정지 버튼이 눌렸을 때
 int IsPause() {
    if (pause_bit) {
       if (IsEnd()) {
-         BeNormal();
+         BeNormal();	// 일시정지 버튼이 눌린 상태에서, 종료 버튼이 눌리면, 초기화하고 종료함
       }
-      if (!pause_finish) {
+      if (!pause_finish) {	// 일시정지 상태에서 초기화 진행
          if (init_bit == 1)
          {
 //            DegTimer = (Encoder_deg_new / 360) * 7.14;
@@ -1582,7 +1621,7 @@ int IsPause() {
          Robot_Initialize();
          return 1;
       }
-      else
+      else	// 일시정지 상태에서 재시작 버튼이 눌려 다시 훈련이 시작할 때, CST 모드로 전환
       {
     	 if(init_flag2<=2)
     	 {
@@ -1607,7 +1646,7 @@ int IsPause() {
    }
    return 0;
 }
-
+// 훈련 시간 카운트
 void IncreaseTime() {
    ++training_timer;
    // 훈련시간 확인 알려주는것
@@ -1616,13 +1655,13 @@ void IncreaseTime() {
       ++time_now;
    }
 }
-
+// 세 가지 모드 알고리즘
 void TrainAbnormalPerson() {
 
-   switch (mode_num) {
+   switch (mode_num) { // 1:passive, 2:activeassisted, 3:active
    case 1:
-	      break_duty = 1;
-	      torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)
+	      break_duty = 1;	// 브레이크 해제
+	      torque_fourier_1 = a0_1 + a1_1 * cos(Encoder_deg_new * w_1)	// 1km/h 참조 프로파일
 	         + b1_1 * sin(Encoder_deg_new * w_1)
 	         + a2_1 * cos(2 * Encoder_deg_new * w_1)
 	         + b2_1 * sin(2 * Encoder_deg_new * w_1)
@@ -1630,7 +1669,7 @@ void TrainAbnormalPerson() {
 	         + b3_1 * sin(3 * Encoder_deg_new * w_1)
 	         + a4_1 * cos(4 * Encoder_deg_new * w_1)
 	         + b4_1 * sin(4 * Encoder_deg_new * w_1);
-	      torque_fourier_3 = a0_3 + a1_3 * cos(Encoder_deg_new * w_3)
+	      torque_fourier_3 = a0_3 + a1_3 * cos(Encoder_deg_new * w_3)	// 3km/h 참조 프로파일
 	         + b1_3 * sin(Encoder_deg_new * w_3)
 	         + a2_3 * cos(2 * Encoder_deg_new * w_3)
 	         + b2_3 * sin(2 * Encoder_deg_new * w_3)
@@ -1638,24 +1677,25 @@ void TrainAbnormalPerson() {
 	         + b3_3 * sin(3 * Encoder_deg_new * w_3)
 	         + a4_3 * cos(4 * Encoder_deg_new * w_3)
 	         + b4_3 * sin(4 * Encoder_deg_new * w_3);
-	      if (current_gain >= 1)   torque_interpolation = ((3 - current_gain) / 2) * torque_fourier_1 + ((current_gain - 1) / 2) * torque_fourier_3;
-	      else if (current_gain < 1) torque_interpolation = current_gain * torque_fourier_1;
+	      if (current_gain >= 1)   torque_interpolation = ((3 - current_gain) / 2) * torque_fourier_1 + ((current_gain - 1) / 2) * torque_fourier_3; // 목표 보행 속도가 1보다 클 경우
+	      else if (current_gain < 1) torque_interpolation = current_gain * torque_fourier_1;	// 목표 보행 속도가 1보다 작은 경우
 
-	      mass_torque = a0 + a1 * cos(Encoder_deg_new * w)  // 최대 200kg;
+	      mass_torque = a0 + a1 * cos(Encoder_deg_new * w)  // 최대 120kg, 체중 보상 토크 프로파일
 	         + b1 * sin(Encoder_deg_new * w)
 	         + a2 * cos(2 * Encoder_deg_new * w)
 	         + b2 * sin(2 * Encoder_deg_new * w)
 	         + a3 * cos(3 * Encoder_deg_new * w)
 	         + b3 * sin(3 * Encoder_deg_new * w);
 	      mass_torque = (double)mass * 0.0083333 * mass_torque;	// 0.00833333 = 1 / 120
-	      mass_torque = mass_torque * tmp;	// 2020 ver.
+	      mass_torque = mass_torque * tmp;	// 상하지 보행재활로봇에 사용하기 위한 계수, tmp = 0.2
 
 	      Position_error = E_vel_deg_time - E_vel_deg_new;
-	      if(Position_error <=0){
+	      if(Position_error <=0){	// position_error가 음수일 때, 즉 참조 프로파일보다 더 빠르게 보행했을 때 현재 보행 각도와 참조 보행각도의 위치를 맞추어줌.
 	    	  DegTimer_old = DegTimer;
 	    	  DegTimer = Degree_set(Encoder_deg_new);
 	      }
 
+	      // 천이구간 보상 토크프로파일
 	      if((Encoder_deg_new >= (torque_degree1 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree1 + torque_degree_offset)))
 	      {
 	         theta = (Encoder_deg_new - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
@@ -1680,25 +1720,25 @@ void TrainAbnormalPerson() {
 	         Radian = 0;
 	         torque_inflection_point = 0;
 	      }
-
+	      // passive mode 토크 프로파일
 	      torque_buffer = torque_interpolation + torque_inflection_point + mass_torque + Kp * Position_error - Kd * Encoder_vel;
 	      if(flag == 1) torque_buffer = Kp * Position_error - Kd * Encoder_vel;
-
+	      // pd값 확인하기 위한 용도. 사용x
 	      Kp_term = Kp * Position_error;
 	      Kd_term = Kd * Encoder_vel;
-
+	      // 필요한 토크를 퍼밀 단위로 바꾸기 위해 1000을 곱함.
 	      torque = torque_buffer * 1000;
-	      if (torque <= 0)
+	      if (torque <= 0)	// 음수 토크는 사용하지 않음. 역방향 토크는 전달하지 못하기 때문에
 	         torque = 0;
-	      if (torque >= (60000 - torque_offset))
+	      if (torque >= (60000 - torque_offset))	// 쿨롱마찰 보상
 	      {
-	         torque = (60000 - torque_offset - 100);
+	         torque = (60000 - torque_offset - 100);	// maximum보다 작은 값 사용
 	      }
 
 	      torque_motor = (torque + torque_offset) / gear_ratio / ratio; // 감속비 60, 감속기 효율 0.8
 	      torque_maxon = (torque_motor / max_motor_torque);   // 모터 정격 토크 = 0.75
 
-	      Torque_Calculate();
+	      Torque_Calculate();	// 토크값 입력
 	      ScicRegs.SCIFFTX.bit.TXFFIENA = 1;
 
 
@@ -1723,7 +1763,7 @@ void TrainAbnormalPerson() {
          + b3_3 * sin(3 * Encoder_deg_new * w_3)
          + a4_3 * cos(4 * Encoder_deg_new * w_3)
          + b4_3 * sin(4 * Encoder_deg_new * w_3);
-
+      // 참고 각속도 프로파일(1km/h)
       Encoder_vel_deg = av0 + av1 * cos(Encoder_deg_new * wv)
          + bv1 * sin(Encoder_deg_new * wv)
          + av2 * cos(2 * Encoder_deg_new * wv)
@@ -1732,7 +1772,7 @@ void TrainAbnormalPerson() {
          + bv3 * sin(3 * Encoder_deg_new * wv)
          + av4 * cos(4 * Encoder_deg_new * wv)
          + bv4 * sin(4 * Encoder_deg_new * wv);
-
+      // 참고 각가속도 프로파일(1km/h)
       Encoder_acc_deg = aa0 + aa1 * cos(Encoder_deg_new * wa)
          + ba1 * sin(Encoder_deg_new * wa)
          + aa2 * cos(2 * Encoder_deg_new * wa)
@@ -1750,18 +1790,18 @@ void TrainAbnormalPerson() {
          + b3 * sin(3 * Encoder_deg_new * w);
       mass_torque = (double)mass * 0.0083333 * mass_torque;	// 0.00833333 = 1 / 120
       mass_torque = mass_torque * tmp;	// 2020 ver.
-
+      // 각속도는 보행속도에 비례하며, 각가속도는 보행속도의 제곱에 비례함.
       Encoder_vel_deg = Encoder_vel_deg * target_gain;
       Encoder_acc_deg = Encoder_acc_deg * target_gain * target_gain;
-
+      // interpolation
       if (target_gain >= 1)   torque_interpolation = ((3 - target_gain) / 2) * torque_fourier_1 + ((target_gain - 1) / 2) * torque_fourier_3;
       else if (target_gain < 1) torque_interpolation = target_gain * torque_fourier_1;
-
+      // 속도의도항, 가속도 의도항
       Vel_error = Encoder_vel - Encoder_vel_deg;
       Acc_error = Encoder_acc - Encoder_acc_deg;
-
+      // 전체 의도항
       torque_intention = Kv * Vel_error + Ka * Acc_error;
-
+      // 천이구간 보상 토크 프로파일
       if((Encoder_deg_new >= (torque_degree1 - torque_degree_offset)) && (Encoder_deg_new <= (torque_degree1 + torque_degree_offset)))
       {
          theta = (Encoder_deg_new - (torque_degree1 - torque_degree_offset)) * (180 / torque_degree_offset);
@@ -1787,9 +1827,9 @@ void TrainAbnormalPerson() {
          torque_inflection_point = 0;
       }
 
-//      torque_buffer = (torque_interpolation + mass_torque + torque_inflection_point) * ratio_gain + torque_intention;
-      if(flag2 == 1) torque_intention = 0;
-
+      // torque_buffer = (torque_interpolation + mass_torque + torque_inflection_point) * ratio_gain + torque_intention;
+      // if(flag2 == 1) torque_intention = 0;
+      // active assisted mode 토크 프로파일
       torque_buffer = torque_interpolation + mass_torque * ratio_gain + torque_intention;
 
       torque = torque_buffer * 1000;
@@ -1804,6 +1844,7 @@ void TrainAbnormalPerson() {
       torque_maxon = (torque_motor / max_motor_torque);   // 모터 정격 토크 = 0.75
 
       Torque_Calculate();
+      // 사용 하지 않는 변수
       time_Encoder_revcnt = Encoder_revcnt;
       Encoder_deg_time = Encoder_deg_new;
       E_vel_deg_time = E_vel_deg_new;
@@ -1840,7 +1881,7 @@ void TrainAbnormalPerson() {
          + bv3 * sin(3 * Encoder_deg_new * wv)
          + av4 * cos(4 * Encoder_deg_new * wv)
          + bv4 * sin(4 * Encoder_deg_new * wv);
-
+      // 사용하지 않는 변수, active mode 속도 확인용
       velocity_mode3 = (Encoder_vel / Encoder_vel_deg) * 0.5;
 
       torque_interpolation = ((3 - active_vel) / 2) * torque_fourier_1 + ((active_vel - 1) / 2) * torque_fourier_3;
@@ -1869,7 +1910,7 @@ void TrainAbnormalPerson() {
          Radian = 0;
          torque_inflection_point = 0;
       }
-
+      // active 모드 토크 프로파일
       torque_buffer = torque_interpolation;// + torque_inflection_point * active_ratio_gain;
 
       torque = torque_buffer * 1000;
@@ -1884,6 +1925,7 @@ void TrainAbnormalPerson() {
       torque_maxon = (torque_motor / max_motor_torque);   // 모터 정격 토크 = 0.75
 
       Torque_Calculate();
+      // 사용하지 않음.
       time_Encoder_revcnt = Encoder_revcnt;
       Encoder_deg_time = Encoder_deg_new;
       E_vel_deg_time = E_vel_deg_new;
@@ -1918,11 +1960,11 @@ void UpdateInformation() {
    move_distance_10 = move_distance_10 / 10;
    move_distance_1 = move_distance_1 % 10;
 }
-
+// 종료시 end_bit 반환
 int IsEnd() {
    return end_bit;
 }
-
+// 훈련 종료 시 초기화 함수
 void BeNormal() {
 	if (init_bit)
 		init_bit = 0;
@@ -1930,7 +1972,7 @@ void BeNormal() {
 	if (init_bit)
 		clear_variable();
 }
-
+// 훈련 type 확인하기 위함. 실질적으로 Type_sel == 2인 경우만 사용
 int Type_Check_fun() {
    if (Type_sel == 1) {
       if (move_dis > target_dis) {
@@ -1967,7 +2009,7 @@ int Type_Check_fun() {
    return 0;
 
 }
-
+// 휴식 시간 카운트
 void break_time() {
    ++break_timer;
    // 휴식시간 확인 알려주는것
@@ -1987,7 +2029,7 @@ void break_time() {
    break_time_10 = (break_time_now - break_time_100 * 100) / 10;
    break_time_1 = (break_time_now - break_time_100 * 100) / break_time_now % 10;
 }
-
+// 훈련 시작 버튼 눌린 후 5초 대기 후에 시작
 int Start_breaking() {
    if ((slow_start_timer < 5000) && (start_bit == 1))   //1000hz 5ms
    {
